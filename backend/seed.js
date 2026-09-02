@@ -33,6 +33,18 @@ async function seed() {
     console.log("Created Admin user successfully.");
   }
 
+  // 1.5 Seed Q11 Sets (Must be done before teams due to foreign key)
+  console.log("Seeding Q11 Sets...");
+  const setsToInsert = db.q11Sets.map(s => ({
+    id: s.id,
+    set_name: s.setName,
+    question_text: s.text,
+    codeword: s.codeword
+  }));
+  const { error: setErr } = await supabase.from('q11_sets').upsert(setsToInsert, { onConflict: 'id' });
+  if (setErr) console.error("Error seeding Q11 sets:", setErr.message);
+  else console.log("Seeded Q11 Sets.");
+
   // 2. Seed Teams
   console.log("Creating Team Auth users and Profiles...");
   for (const t of db.teams) {
@@ -64,6 +76,7 @@ async function seed() {
         team_name: t.teamName,
         pass: t.pass,
         instance_id: t.instanceId,
+        q11_set_id: t.q11SetId,
         correct_code: t.correctCode
       }, { onConflict: 'id' });
 
@@ -83,24 +96,10 @@ async function seed() {
   await supabase.from('round_config').upsert(roundConfigToInsert, { onConflict: 'id' });
 
   // 4. Seed Questions (NEW)
-  // Convert JS functions to text formulas for storage
-  const formulas = [
-    "X * 10",
-    "X * 10 + 50",
-    "X * X",
-    "X",
-    "X * 3",
-    "(X * 3) - 10",
-    "((X * 3) - 10) % 2",
-    "X + 100",
-    "(X + 100) * 2",
-    "((X + 100) * 2) - X"
-  ];
-  
-  const templatesToInsert = db.questionTemplates.map((q, i) => ({
+  const templatesToInsert = db.questionTemplates.map(q => ({
     id: q.id,
     question_text: q.text,
-    formula: formulas[i], // string representation of the math
+    formula: "", // Not used anymore for these static questions
     hint: q.hint
   }));
   const { error: qtErr } = await supabase.from('question_templates').upsert(templatesToInsert, { onConflict: 'id' });

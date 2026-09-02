@@ -134,28 +134,21 @@ app.get('/api/questions', authenticate, async (req, res) => {
   }
   
   const questions = (templates || []).map(q => {
-    // Safely evaluate the formula (e.g. replacing X with the teamNum)
-    // Note: eval is generally unsafe, but here we control the formulas perfectly in DB
-    const formulaStr = q.formula.replace(/X/g, teamNum);
-    let calculatedValue = 0;
-    try {
-      calculatedValue = eval(formulaStr);
-    } catch(e) {
-      console.error('Error evaluating formula:', formulaStr);
-    }
-
     return {
       id: q.id,
-      text: q.question_text.replace('X', calculatedValue), 
+      text: q.question_text, 
       hint: hintMap[q.id] ? q.hint : null 
     };
   });
+
+  // Fetch the specific Q11 set for this team
+  const { data: q11Set } = await supabase.from('q11_sets').select('question_text').eq('id', req.team.q11_set_id).single();
 
   res.json({
     roundStatus: config.status,
     timeRemaining: Math.max(0, new Date(config.end_time).getTime() - Date.now()),
     questions,
-    q11: db.q11Text // Keep q11 instruction in code for now as it's static
+    q11: q11Set ? q11Set.question_text : "Q11 is being prepared."
   });
 });
 
