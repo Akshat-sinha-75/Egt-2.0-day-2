@@ -301,7 +301,159 @@ app.get('/api/admin/teams', authenticateAdmin, async (req, res) => {
     const { data: teams } = await supabase.from('teams').select('team_id, pass, correct_code').order('team_id');
     res.json(teams || []);
 });
+// ------------------------------------------------------------------
+// ROUND 2 APIs
+// ------------------------------------------------------------------
 
+// Get the current Round 2 state for a team
+app.get('/api/round2/current', authenticate, async (req, res) => {
+  const teamId = req.team.team_id;
+
+  const { data: assignment, error } = await supabase
+    .from('round2_team_assignments')
+    .select('*, round2_paths(checkpoints)')
+    .eq('team_id', teamId)
+    .single();
+
+  if (error || !assignment) {
+    return res.status(404).json({ error: 'No Round 2 assignment found for this team.' });
+  }
+
+  const checkpoints = assignment.round2_paths.checkpoints;
+  const currentStep = assignment.current_step;
+
+  if (assignment.state === 'COMPLETE' || currentStep >= checkpoints.length) {
+    return res.json({ state: 'COMPLETE' });
+  }
+
+  const targetDestId = checkpoints[currentStep];
+  const { data: dest } = await supabase.from('round2_destinations').select('*').eq('id', targetDestId).single();
+
+  if (assignment.state === 'TRANSIT') {
+    return res.json({ state: 'TRANSIT', nextDestination: dest.name });
+  }
+
+  // State is PENDING_SOLVE
+  let qId = assignment.current_question_id;
+  if (!qId) {
+    // Pick a random question for targetDestId
+    const { data: questions } = await supabase
+      .from('round2_questions')
+      .select('id, question_text, difficulty')
+      .eq('destination_id', targetDestId);
+    
+    if (questions && questions.length > 0) {
+      let selectedQuestion;
+      const rand = Math.random() * 5;
+      let cumulative = 0;
+      
+      for (const q of questions) {
+        const weight = q.difficulty === 'EASY' ? 1.5 : 0.875;
+        cumulative += weight;
+        if (rand <= cumulative) {
+          selectedQuestion = q;
+          break;
+        }
+      }
+      if (!selectedQuestion) selectedQuestion = questions[questions.length - 1];
+
+      qId = selectedQuestion.id;
+      // Update assignment
+      await supabase.from('round2_team_assignments').update({ current_question_id: qId }).eq('team_id', teamId);
+    }
+  }
+
+  // Fetch the question text
+  const { data: qData } = await supabase.from('round2_questions').select('question_text').eq('id', qId).single();
+
+  res.json({
+    state: 'PENDING_SOLVE',
+    question: qData ? qData.question_text : 'No question available.'
+  });
+});
+
+app.post('/api/round2/submit', authenticate, async (req, res) => {
+  const teamId = req.team.team_id;
+  const { answer } = req.body;
+
+  const { data: assignment } = await supabase
+    .from('round2_team_assignments')
+    .select('*, round2_paths(checkpoints)')
+    .eq('team_id', teamId)
+    .single();
+
+  if (!assignment || assignment.state !== 'PENDING_SOLVE' || !assignment.current_question_id) {
+    return res.status(400).json({ error: 'Not currently waiting for an answer.' });
+  }
+
+  const { data: qData } = await supabase.from('round2_questions').select('*').eq('id', assignment.current_question_id).single();
+  
+  if (!qData || qData.correct_answer.toLowerCase() !== answer.trim().toLowerCase()) {
+    return res.status(400).json({ error: 'Incorrect answer. Please try again.' });
+  }
+
+  // Correct answer! Move to TRANSIT state
+  await supabase.from('round2_team_assignments').update({
+    state: 'TRANSIT',
+    current_question_id: null
+  }).eq('team_id', teamId);
+
+  const targetDestId = assignment.round2_paths.checkpoints[assignment.current_step];
+  const { data: dest } = await supabase.from('round2_destinations').select('*').eq('id', targetDestId).single();
+
+  res.json({ success: true, nextDestination: dest.name });
+});
+
+app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
+  const teamId = req.team.team_id;
+  const { qrCode } = req.body;
+
+  const { data: dest } = await supabase.from('round2_destinations').select('*').eq('qr_identifier', qrCode).single();
+  if (!dest) {
+    return res.status(404).json({ error: 'Invalid QR code.' });
+  }
+
+  const { data: assignment } = await supabase
+    .from('round2_team_assignments')
+    .select('*, round2_paths(checkpoints)')
+    .eq('team_id', teamId)
+    .single();
+
+  if (!assignment || assignment.state === 'COMPLETE') {
+    return res.status(400).json({ error: 'Event already completed.' });
+  }
+
+  if (assignment.state === 'PENDING_SOLVE') {
+    return res.status(400).json({ error: 'Solve the riddle first before scanning!' });
+  }
+
+  const checkpoints = assignment.round2_paths.checkpoints;
+  const expectedDestId = checkpoints[assignment.current_step];
+
+  if (dest.id !== expectedDestId) {
+    const { data: expectedDest } = await supabase.from('round2_destinations').select('name').eq('id', expectedDestId).single();
+    return res.status(400).json({ error: `You have not cleared previous checkpoints. You have to move to ${expectedDest.name}.` });
+  }
+
+  // Correct destination reached!
+  // Log progress
+  await supabase.from('round2_progress').insert({
+    team_id: teamId,
+    destination_id: dest.id,
+    step_no: assignment.current_step + 1
+  });
+
+  const nextStep = assignment.current_step + 1;
+  const isComplete = nextStep >= checkpoints.length;
+
+  if (isComplete) {
+    await supabase.from('round2_team_assignments').update({ current_step: nextStep, state: 'COMPLETE' }).eq('team_id', teamId);
+    return res.json({ state: 'COMPLETE', message: 'Hunt Completed!' });
+  } else {
+    await supabase.from('round2_team_assignments').update({ current_step: nextStep, state: 'PENDING_SOLVE' }).eq('team_id', teamId);
+    return res.json({ state: 'PENDING_SOLVE', message: `Arrived at ${dest.name}!` });
+  }
+});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

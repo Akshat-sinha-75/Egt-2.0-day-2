@@ -15,7 +15,7 @@ export default function App() {
   // Check if initial URL hash corresponds to a quiz route
   const isQuizHash = (h) => {
     const clean = h.replace(/^#\/?/, '');
-    return ['login', 'round-1', 'results', 'round-2', 'round-2/rules'].some((route) =>
+    return ['login', 'round-1', 'results', 'round-2', 'round-2/rules', 'round2/checkpoint'].some((route) =>
       clean.startsWith(route)
     );
   };

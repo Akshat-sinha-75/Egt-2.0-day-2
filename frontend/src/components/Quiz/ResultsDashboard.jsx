@@ -7,10 +7,10 @@ export default function ResultsDashboard({
   result, // from backend: { result: 'QUALIFIED' | 'COMPLETED_NOT_QUALIFIED' | 'INCORRECT' | 'TIME_EXPIRED', rank, message }
   rank,
   onProceedToRound2,
+  onRetryRound1,
   onBackToHall,
   onLogout
 }) {
-  const [activeTab, setActiveTab] = useState('scorecard'); // 'scorecard' | 'leaderboard'
   const [houseFilter, setHouseFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -137,6 +137,21 @@ export default function ResultsDashboard({
 
         {/* Navigation Action Buttons */}
         <div className="results-actions-row">
+          {isIncorrect && onRetryRound1 && (
+            <button
+              type="button"
+              className="btn-gold"
+              onClick={onRetryRound1}
+              style={{
+                boxShadow: '0 0 20px rgba(240, 208, 137, 0.5)',
+                fontWeight: 'bold',
+                letterSpacing: '0.08em',
+                padding: '0.8rem 1.8rem'
+              }}
+            >
+              ← RETRY QUESTION 11
+            </button>
+          )}
           {isQualified && (
               <button
                 type="button"

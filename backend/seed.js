@@ -46,27 +46,46 @@ async function seed() {
   else console.log("Seeded Q11 Sets.");
 
   // 2. Seed Teams
-  console.log("Creating Team Auth users and Profiles...");
+  console.log("Creating/Updating Team Auth users and Profiles...");
+  const { data: allUsersData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const userMap = {};
+  if (allUsersData && allUsersData.users) {
+    allUsersData.users.forEach(u => {
+      userMap[u.email.toLowerCase()] = u;
+    });
+  }
+
   for (const t of db.teams) {
     const teamEmail = `${t.teamId.toLowerCase()}@treasurehunt.local`;
     let userId = null;
 
-    const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
-      email: teamEmail,
-      password: t.pass,
-      email_confirm: true,
-      user_metadata: { role: 'team', teamId: t.teamId }
-    });
-
-    if (authErr && authErr.status === 422) {
-      const { data: existingUsers } = await supabase.auth.admin.listUsers();
-      const existing = existingUsers.users.find(u => u.email === teamEmail);
-      if (existing) userId = existing.id;
-    } else if (authErr) {
-      console.error(`Error creating auth for ${t.teamId}:`, authErr.message);
-      continue;
+    if (userMap[teamEmail]) {
+      // User already exists in Auth: update their password and metadata!
+      userId = userMap[teamEmail].id;
+      const { error: updateErr } = await supabase.auth.admin.updateUserById(userId, {
+        password: t.pass,
+        user_metadata: { role: 'team', teamId: t.teamId }
+      });
+      if (updateErr) {
+        console.error(`Error updating password for ${t.teamId}:`, updateErr.message);
+      } else {
+        console.log(`Updated auth password for ${t.teamId} -> ${t.pass}`);
+      }
     } else {
+      // Create fresh user in Auth
+      const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+        email: teamEmail,
+        password: t.pass,
+        email_confirm: true,
+        user_metadata: { role: 'team', teamId: t.teamId }
+      });
+
+      if (authErr) {
+        console.error(`Error creating auth for ${t.teamId}:`, authErr.message);
+        continue;
+      }
       userId = authData.user.id;
+      console.log(`Created new auth user for ${t.teamId}`);
     }
 
     if (userId) {
@@ -83,7 +102,7 @@ async function seed() {
       if (profileErr) console.error(`Error creating profile for ${t.teamId}:`, profileErr.message);
     }
   }
-  console.log("Seeded teams and auth users.");
+  console.log("Seeded teams and auth users with updated passwords.");
 
   // 3. Seed Round Config (Default to CLOSED, times in past so timer is 0)
   const roundConfigToInsert = {

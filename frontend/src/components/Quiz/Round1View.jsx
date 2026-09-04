@@ -22,6 +22,7 @@ export default function Round1View({
   
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   // Poll backend for questions & round status
   useEffect(() => {
@@ -197,6 +198,7 @@ export default function Round1View({
   const handleInputChange = (e) => {
     if (isQ11) {
       setFinalCode(e.target.value);
+      if (submitError) setSubmitError('');
     } else {
       onSelectAnswer(currentQ.id, e.target.value);
     }
@@ -205,13 +207,23 @@ export default function Round1View({
   const handleConfirmSubmit = async (e) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setSubmitError('');
     const rect = e.currentTarget.getBoundingClientRect();
     spawnSparks(rect.left + rect.width / 2, rect.top + rect.height / 2, '#f0d089', 24);
 
-    setTimeout(() => {
+    try {
+      const res = await onSubmitQuiz(finalCode);
+      if (res && !res.success) {
+        setSubmitError(res.message || 'Incorrect final codeword. The vault remains sealed.');
+        setIsSubmitting(false);
+        setShowConfirmModal(false);
+        setCurrentIdx(TOTAL_QUESTIONS); // Keep user focused on Q11
+      }
+    } catch (err) {
+      setSubmitError(err.message || 'Failed to submit codeword. Please try again.');
+      setIsSubmitting(false);
       setShowConfirmModal(false);
-      onSubmitQuiz(finalCode);
-    }, 450);
+    }
   };
 
   return (
@@ -312,11 +324,40 @@ export default function Round1View({
                       placeholder="Enter the final codeword to unlock the vault"
                       style={{
                         width: '100%', padding: '1rem', fontSize: '1.5rem',
-                        background: 'rgba(0,0,0,0.5)', color: '#f0d089', border: '2px solid #f0d089',
-                        borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '2px'
+                        background: 'rgba(0,0,0,0.5)', 
+                        color: submitError ? '#ff8080' : '#f0d089', 
+                        border: submitError ? '2px solid #ef4444' : '2px solid #f0d089',
+                        boxShadow: submitError ? '0 0 14px rgba(239, 68, 68, 0.4)' : 'none',
+                        borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '2px',
+                        transition: 'all 0.3s ease'
                       }}
                     />
                   </div>
+
+                  {submitError && (
+                    <div style={{
+                      marginTop: '1.5rem',
+                      padding: '1.1rem 1.3rem',
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.6)',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '14px',
+                      color: '#fca5a5',
+                      boxShadow: '0 4px 20px rgba(239, 68, 68, 0.15)'
+                    }}>
+                      <span style={{ fontSize: '2rem', flexShrink: 0 }}>❌</span>
+                      <div>
+                        <strong style={{ color: '#ff6b6b', display: 'block', fontSize: '1rem', letterSpacing: '0.04em', marginBottom: '3px' }}>
+                          INCORRECT FINAL CODEWORD
+                        </strong>
+                        <span style={{ fontSize: '0.92rem', color: '#fecaca', lineHeight: '1.4' }}>
+                          {submitError} The vault refuses to open. Please recheck your calculations for Keys 1 through 10 and try again!
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 

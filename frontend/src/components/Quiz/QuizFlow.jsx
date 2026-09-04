@@ -3,7 +3,7 @@ import LoginView from './LoginView';
 import Round1View from './Round1View';
 import ResultsDashboard from './ResultsDashboard';
 import Round2RulesView from './Round2RulesView';
-import Round2PlayView from './Round2PlayView';
+import Round2CheckpointView from './Round2CheckpointView';
 import {
   loadQuizState,
   saveQuizState,
@@ -15,7 +15,17 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
   // Restore persisted state or start fresh
   const [quizState, setQuizState] = useState(() => {
     const saved = loadQuizState();
-    if (saved) return saved;
+    if (saved) {
+      // If user had an INCORRECT submission result saved in session, recover back to round-1
+      if (saved.result && saved.result.result === 'INCORRECT') {
+        return {
+          ...saved,
+          stage: 'round-1',
+          result: null,
+        };
+      }
+      return saved;
+    }
     return {
       stage: 'login', // 'login' | 'round-1' | 'results' | 'round-2-rules' | 'round-2-play'
       participant: null,
@@ -31,14 +41,16 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
     const currentHash = window.location.hash.replace(/^#\/?/, '');
     if (currentHash === 'login' && quizState.stage !== 'login' && !quizState.participant) {
       setQuizState((prev) => ({ ...prev, stage: 'login' }));
-    } else if (currentHash === 'round-1' && quizState.participant && !quizState.result) {
-      setQuizState((prev) => ({ ...prev, stage: 'round-1' }));
-    } else if (currentHash === 'results' && quizState.result) {
+    } else if (currentHash === 'round-1' && quizState.participant && (!quizState.result || quizState.result.result === 'INCORRECT')) {
+      setQuizState((prev) => ({ ...prev, stage: 'round-1', result: null }));
+    } else if (currentHash === 'results' && quizState.result && quizState.result.result !== 'INCORRECT') {
       setQuizState((prev) => ({ ...prev, stage: 'results' }));
     } else if (currentHash === 'round-2-rules') {
       setQuizState((prev) => ({ ...prev, stage: 'round-2-rules' }));
     } else if (currentHash === 'round-2') {
       setQuizState((prev) => ({ ...prev, stage: 'round-2-play' }));
+    } else if (currentHash.startsWith('round2/checkpoint')) {
+      setQuizState((prev) => ({ ...prev, stage: 'round-2-checkpoint' }));
     }
   }, []);
 
@@ -72,9 +84,19 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
       rank: null,
       round2: null,
     });
-    sessionStorage.removeItem('ADC_QuizState');
+    sessionStorage.removeItem('egt2_wizarding_hunt_v2');
     window.location.hash = '#/login';
     if (onTriggerToast) onTriggerToast(' LOGGED OUT SUCCESSFULLY ');
+  };
+
+  // Allow returning to Round 1 to retry if codeword was incorrect
+  const handleRetryRound1 = () => {
+    setQuizState((prev) => ({
+      ...prev,
+      result: null,
+      stage: 'round-1',
+    }));
+    navigateStage('round-1');
   };
 
   // Login handler
@@ -102,12 +124,25 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
   const handleSubmitRound1 = async (finalCode) => {
     if (!quizState.participant || !quizState.participant.token) {
       if (onTriggerToast) onTriggerToast(' SESSION EXPIRED - PLEASE LOGIN AGAIN ');
-      return navigateStage('login');
+      navigateStage('login');
+      return { success: false, message: 'Session expired' };
     }
 
     try {
       const resultData = await submitCodeApi(quizState.participant.token, finalCode);
       
+      // If code is incorrect, do NOT navigate away! Keep user on Round 1 so they can re-enter
+      if (resultData.result === 'INCORRECT') {
+        if (onTriggerToast) {
+          onTriggerToast(' INCORRECT CODEWORD - THE VAULT REMAINS LOCKED ');
+        }
+        return {
+          success: false,
+          error: 'INCORRECT',
+          message: resultData.message || 'Incorrect final codeword. Please verify your calculations and try again!'
+        };
+      }
+
       setQuizState((prev) => ({
         ...prev,
         result: resultData, // Backend response { result, rank, message }
@@ -120,10 +155,12 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
       }
 
       navigateStage('results');
+      return { success: true, result: resultData };
     } catch (err) {
       if (onTriggerToast) {
         onTriggerToast(` SUBMISSION FAILED: ${err.message} `);
       }
+      return { success: false, message: err.message };
     }
   };
 
@@ -188,6 +225,7 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
           result={quizState.result || {}}
           rank={quizState.rank}
           onProceedToRound2={handleProceedToRound2}
+          onRetryRound1={handleRetryRound1}
           onBackToHall={onExitToGreatHall}
           onLogout={handleLogout}
         />
@@ -197,18 +235,16 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
       return (
         <Round2RulesView
           participant={quizState.participant || { name: 'Seeker', teamId: 'EGT-001' }}
-          onStartRound2={handleStartRound2Play}
+          onStartRound2={handleProceedToRound2}
           onBackToResults={() => navigateStage('results')}
         />
       );
 
-    case 'round-2-play':
+    case 'round-2-checkpoint':
       return (
-        <Round2PlayView
-          participant={quizState.participant || { name: 'Seeker', teamId: 'EGT-001' }}
-          round2State={quizState.round2}
-          onUpdateRound2={handleUpdateRound2}
+        <Round2CheckpointView
           onBackToHall={onExitToGreatHall}
+          onTriggerToast={onTriggerToast}
         />
       );
 
