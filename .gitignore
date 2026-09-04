@@ -39,7 +39,11 @@ backend/test-frontend/*
 
 # Secrets
 backend/src/db.js
+backend/db/
 round2_teams.sql
 scratch_round2.txt
 team_passwords.json
 update_qs.sql
+gen_teams.py
+parse_qs.py
+questions.txt
