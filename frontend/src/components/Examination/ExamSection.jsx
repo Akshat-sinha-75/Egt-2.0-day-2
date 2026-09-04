@@ -9,7 +9,7 @@ const CANDLES = [
   { left: '91%', top: '24%', dur: '6.4s', del: '-4s' },
 ];
 
-export default function ExamSection({ onTriggerToast }) {
+export default function ExamSection({ onTriggerToast, onStartQuiz }) {
   const [housePoints, setHousePoints] = useState(0);
 
   useEffect(() => {
@@ -40,10 +40,14 @@ export default function ExamSection({ onTriggerToast }) {
     btn.appendChild(ripple);
     setTimeout(() => ripple.remove(), 750);
 
-    spawnSparks(rect.left + rect.width / 2, rect.top + rect.height / 2, '#f0d089', 22);
+    spawnSparks(rect.left + rect.width / 2, rect.top + rect.height / 2, '#f0d089', 24);
 
     if (onTriggerToast) {
-      onTriggerToast('✦ THE O.W.L. SCROLL IS SEALED — QUIZ PORTAL OPENS SOON ✦');
+      onTriggerToast('✦ THE QUIZ PORTAL OPENS — SIGN THE SCROLL ✦');
+    }
+
+    if (onStartQuiz) {
+      onStartQuiz();
     }
   };
 
@@ -106,13 +110,13 @@ export default function ExamSection({ onTriggerToast }) {
         <h3>Test your wizarding knowledge.</h3>
         <ul className="exam-meta">
           <li>
-            <i>✦</i> 10 QUESTIONS
+            <i>✦</i> 20 QUESTIONS
           </li>
           <li>
             <i>✦</i> TIMED EXAMINATION
           </li>
           <li>
-            <i>✦</i> EARN HOUSE POINTS
+            <i>✦</i> QUALIFY FOR ROUND 2
           </li>
         </ul>
         <button className="quiz-btn" id="startQuiz" onClick={handleStartQuiz}>
