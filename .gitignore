@@ -31,7 +31,12 @@ dist-ssr
 # Scratch files
 extracted_*.txt
 r2_*.txt
+Round*.docx
 
 # Test Frontend (Exclude all but admin)
 backend/test-frontend/*
 !backend/test-frontend/admin.html
+
+# Secrets
+backend/src/db.js
+

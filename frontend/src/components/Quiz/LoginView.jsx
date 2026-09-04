@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { spawnSparks } from '../../utils/sparks';
+import { loginApi } from '../../utils/api';
 
 const CANDLES = [
   { left: '9%', top: '15%', dur: '6.5s', del: '-1s' },
@@ -15,6 +16,7 @@ export default function LoginView({ onLoginSuccess, onBackToHall, onTriggerToast
   const [pass, setPass] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (field, val) => {
     if (field === 'name') setName(val);
@@ -26,7 +28,7 @@ export default function LoginView({ onLoginSuccess, onBackToHall, onTriggerToast
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
 
@@ -54,18 +56,33 @@ export default function LoginView({ onLoginSuccess, onBackToHall, onTriggerToast
       return;
     }
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    spawnSparks(rect.left + rect.width / 2, rect.top + 40, '#f0d089', 24);
+    setIsLoading(true);
 
-    if (onTriggerToast) {
-      onTriggerToast(`WELCOME, ${cleanName.toUpperCase()} — ROUND 1 UNLOCKED `);
+    const targetRect = e.currentTarget.getBoundingClientRect();
+
+    try {
+      const response = await loginApi(cleanId, cleanPass);
+      
+      spawnSparks(targetRect.left + targetRect.width / 2, targetRect.top + 40, '#f0d089', 24);
+
+      if (onTriggerToast) {
+        onTriggerToast(`WELCOME, ${cleanName.toUpperCase()} — ROUND 1 UNLOCKED `);
+      }
+
+      onLoginSuccess({
+        name: cleanName,
+        teamId: response.teamId || cleanId.toUpperCase(),
+        token: response.token,
+        loggedInAt: Date.now(),
+      });
+    } catch (err) {
+      setErrors({ pass: err.message });
+      if (onTriggerToast) {
+        onTriggerToast(' INVALID CREDENTIALS ');
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    onLoginSuccess({
-      name: cleanName,
-      teamId: cleanId.toUpperCase(),
-      loggedInAt: Date.now(),
-    });
   };
 
   return (
@@ -162,10 +179,10 @@ export default function LoginView({ onLoginSuccess, onBackToHall, onTriggerToast
             </div>
 
             <div className="login-actions">
-              <button type="submit" className="btn-gold login-submit-btn">
-                ENTER ROUND 1&nbsp;
+              <button type="submit" className="btn-gold login-submit-btn" disabled={isLoading}>
+                {isLoading ? 'VERIFYING SCROLL...' : 'ENTER ROUND 1 '}
               </button>
-              <button type="button" className="btn-ghost" onClick={onBackToHall}>
+              <button type="button" className="btn-ghost" onClick={onBackToHall} disabled={isLoading}>
                 ← RETURN TO THE GREAT HALL
               </button>
             </div>

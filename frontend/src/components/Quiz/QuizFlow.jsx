@@ -5,11 +5,10 @@ import ResultsDashboard from './ResultsDashboard';
 import Round2RulesView from './Round2RulesView';
 import Round2PlayView from './Round2PlayView';
 import {
-  evaluateRound1,
-  getRound1Rank,
   loadQuizState,
   saveQuizState,
 } from './QuizData';
+import { submitCodeApi } from '../../utils/api';
 import './Quiz.css';
 
 export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
@@ -64,6 +63,20 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  const handleLogout = () => {
+    setQuizState({
+      stage: 'login',
+      participant: null,
+      answers: {},
+      result: null,
+      rank: null,
+      round2: null,
+    });
+    sessionStorage.removeItem('ADC_QuizState');
+    window.location.hash = '#/login';
+    if (onTriggerToast) onTriggerToast(' LOGGED OUT SUCCESSFULLY ');
+  };
+
   // Login handler
   const handleLoginSuccess = (participantData) => {
     setQuizState((prev) => ({
@@ -86,25 +99,32 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
   };
 
   // Round 1 Submission
-  const handleSubmitRound1 = async () => {
-    const evaluation = evaluateRound1(quizState.answers);
-    const calculatedRank = await getRound1Rank(
-      quizState.participant,
-      evaluation.score
-    );
-
-    setQuizState((prev) => ({
-      ...prev,
-      result: evaluation,
-      rank: calculatedRank,
-      stage: 'results',
-    }));
-
-    if (onTriggerToast) {
-      onTriggerToast(' THE O.W.L. SCROLL IS SEALED & EVALUATED ');
+  const handleSubmitRound1 = async (finalCode) => {
+    if (!quizState.participant || !quizState.participant.token) {
+      if (onTriggerToast) onTriggerToast(' SESSION EXPIRED - PLEASE LOGIN AGAIN ');
+      return navigateStage('login');
     }
 
-    navigateStage('results');
+    try {
+      const resultData = await submitCodeApi(quizState.participant.token, finalCode);
+      
+      setQuizState((prev) => ({
+        ...prev,
+        result: resultData, // Backend response { result, rank, message }
+        rank: resultData.rank,
+        stage: 'results',
+      }));
+
+      if (onTriggerToast) {
+        onTriggerToast(' THE O.W.L. SCROLL IS SEALED & EVALUATED ');
+      }
+
+      navigateStage('results');
+    } catch (err) {
+      if (onTriggerToast) {
+        onTriggerToast(` SUBMISSION FAILED: ${err.message} `);
+      }
+    }
   };
 
   // Round 2 Handlers
@@ -157,6 +177,7 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
           onSelectAnswer={handleSelectAnswer}
           onSubmitQuiz={handleSubmitRound1}
           onBackToHall={onExitToGreatHall}
+          onLogout={handleLogout}
         />
       );
 
@@ -164,10 +185,11 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
       return (
         <ResultsDashboard
           participant={quizState.participant || { name: 'Seeker', teamId: 'EGT-001' }}
-          result={quizState.result || evaluateRound1({})}
+          result={quizState.result || {}}
           rank={quizState.rank}
           onProceedToRound2={handleProceedToRound2}
           onBackToHall={onExitToGreatHall}
+          onLogout={handleLogout}
         />
       );
 

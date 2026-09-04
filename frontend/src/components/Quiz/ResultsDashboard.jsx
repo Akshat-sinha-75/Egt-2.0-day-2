@@ -1,25 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { owlGrade, INITIAL_LEADERBOARD } from './QuizData';
+import { INITIAL_LEADERBOARD } from './QuizData';
 import { spawnSparks } from '../../utils/sparks';
 
 export default function ResultsDashboard({
   participant,
-  result,
+  result, // from backend: { result: 'QUALIFIED' | 'COMPLETED_NOT_QUALIFIED' | 'INCORRECT' | 'TIME_EXPIRED', rank, message }
   rank,
   onProceedToRound2,
   onBackToHall,
+  onLogout
 }) {
   const [activeTab, setActiveTab] = useState('scorecard'); // 'scorecard' | 'leaderboard'
-  const [reviewFilter, setReviewFilter] = useState('all'); // 'all' | 'ok' | 'bad'
   const [houseFilter, setHouseFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const grade = owlGrade(result.score);
-  const isPerfect = result.isPerfect;
+  const statusString = result.result || 'UNKNOWN';
+  const isQualified = statusString === 'QUALIFIED' || statusString === 'ALREADY_QUALIFIED';
+  const isIncorrect = statusString === 'INCORRECT';
+  const isExpired = statusString === 'TIME_EXPIRED';
+  const displayMessage = result.message || 'Status Unknown';
 
-  // Celebratory magical sparks on perfect score mount
+  // Celebratory magical sparks on qualification
   useEffect(() => {
-    if (isPerfect) {
+    if (isQualified) {
       let count = 0;
       const timer = setInterval(() => {
         const x = innerWidth * (0.2 + Math.random() * 0.6);
@@ -30,30 +33,30 @@ export default function ResultsDashboard({
       }, 350);
       return () => clearInterval(timer);
     }
-  }, [isPerfect]);
+  }, [isQualified]);
 
   // Combined leaderboard with current player's submission inserted
   const fullLeaderboard = useMemo(() => {
     const list = [...INITIAL_LEADERBOARD];
-    const userRank = rank || 1;
+    const userRank = rank || result.rank || 999;
 
-    // Check if user already exists
-    const userEntry = {
-      rank: userRank,
-      name: participant.name,
-      teamId: participant.teamId,
-      house: 'Gryffindor',
-      score: result.score,
-      total: result.total,
-      time: '04m 30s',
-      status: result.isQualified ? 'QUALIFIED' : 'STANDBY',
-      isCurrentUser: true,
-    };
+    // Insert user entry into ranking list if qualified or completed
+    if (!isIncorrect && !isExpired) {
+        const userEntry = {
+          rank: userRank,
+          name: participant.name,
+          teamId: participant.teamId,
+          house: 'Gryffindor', // Defaulting for visual mock
+          score: isQualified ? 1 : 0, 
+          total: 1,
+          time: 'N/A', // Time from backend can be added later
+          status: isQualified ? 'QUALIFIED' : 'STANDBY',
+          isCurrentUser: true,
+        };
+        list.push(userEntry);
+    }
 
-    // Insert user entry into ranking list
-    list.push(userEntry);
     list.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
       return a.rank - b.rank;
     });
 
@@ -62,7 +65,7 @@ export default function ResultsDashboard({
       ...item,
       displayRank: idx + 1,
     }));
-  }, [participant, result, rank]);
+  }, [participant, result, rank, isQualified, isIncorrect, isExpired]);
 
   const filteredLeaderboard = fullLeaderboard.filter((item) => {
     const matchesHouse = houseFilter === 'All' || item.house === houseFilter;
@@ -72,19 +75,13 @@ export default function ResultsDashboard({
     return matchesHouse && matchesSearch;
   });
 
-  const filteredReview = result.review.filter((r) => {
-    if (reviewFilter === 'ok') return r.isCorrect;
-    if (reviewFilter === 'bad') return !r.isCorrect;
-    return true;
-  });
-
   return (
     <section className="results-dashboard-page" aria-label="Round 1 results and tournament dashboard">
       <div className="dashboard-container">
         {/* Header */}
         <header className="results-header">
           <p className="quiz-label center">THE FIRST TASK · EXAMINATION CONCLUDED</p>
-          <h1 className="quiz-sec-title center">THE HOUSE-CUP DASHBOARD</h1>
+          <h1 className="quiz-sec-title center">THE VAULT DASHBOARD</h1>
           <div className="center">
             <span className="part-status-chip">
               🧙 <b>{participant.name}</b> · {participant.teamId}
@@ -92,7 +89,7 @@ export default function ResultsDashboard({
           </div>
         </header>
 
-        {/* House-Cup Scoreboard Card (inspired by dd.html) */}
+        {/* House-Cup Scoreboard Card */}
         <section className="score-board-card th-card">
           <span className="corner tl"></span>
           <span className="corner tr"></span>
@@ -100,82 +97,55 @@ export default function ResultsDashboard({
           <span className="corner br"></span>
 
           <div className="sb-grid">
-            {/* Left: Big Score & Accuracy */}
+            {/* Left: Big Status Icon */}
             <div className="sb-score-col">
-              <div className="sb-score-number">{result.score}</div>
-              <span className="sb-score-sub">OF {result.total} CORRECT</span>
-              <div className="sb-accuracy-badge">{result.percent}% ACCURACY</div>
+              <div className="sb-score-number" style={{ fontSize: '3.5rem' }}>
+                {isQualified ? '🏆' : isIncorrect ? '❌' : isExpired ? '⏳' : '📜'}
+              </div>
             </div>
 
-            {/* Middle: Title, Progress Bar, Details */}
+            {/* Middle: Title, Details */}
             <div className="sb-mid-col">
-              <h2 className="sb-headline">
-                {isPerfect
-                  ? '🎉 Outstanding! A Flawless Scroll'
-                  : result.isQualified
-                  ? '🧹 Exceeds Expectations — Gate Unlocked'
-                  : '🌫️ The Vault Stays Sealed'}
+              <h2 className="sb-headline" style={{ fontSize: '1.8rem', color: isQualified ? '#43e08a' : '#f0d089' }}>
+                {displayMessage}
               </h2>
 
-              <div className="sb-bar-wrap">
-                <div
-                  className="sb-bar-fill"
-                  style={{ width: `${result.percent}%` }}
-                ></div>
-              </div>
-
-              <p className="sb-details">
-                Submitted on {new Date(result.submittedAt).toLocaleTimeString()} · All 20 answers locked and recorded on the tournament ledger.
+              <p className="sb-details" style={{ fontSize: '1.2rem', marginTop: '1rem', color: '#ccc' }}>
+                {isQualified && 'Outstanding! You have cracked the code and unlocked the gate.'}
+                {isIncorrect && 'The codeword was incorrect. Please try again if time allows.'}
+                {isExpired && 'Time has expired. The vault is sealed.'}
+                {!isQualified && !isIncorrect && !isExpired && 'The Vault Stays Sealed.'}
               </p>
             </div>
 
             {/* Right: Grade Stamp & Rank Plaque */}
             <div className="sb-right-col">
-              <div className={`grade-stamp ${result.isQualified ? 'pass' : 'fail'}`}>
-                <b className="stamp-letter">{grade.grade}</b>
-                <span className="stamp-label">{grade.label.toUpperCase()}</span>
+              <div className={`grade-stamp ${isQualified ? 'pass' : 'fail'}`}>
+                <b className="stamp-letter">{isQualified ? 'O' : 'T'}</b>
+                <span className="stamp-label">{isQualified ? 'OUTSTANDING' : 'TROLL'}</span>
               </div>
 
-              <div className="rank-plaque">
-                <span className="plaque-label">YOUR RANK</span>
-                <b className="plaque-num">#{rank || 1}</b>
-              </div>
+              {(!isIncorrect && !isExpired) && (
+                  <div className="rank-plaque">
+                    <span className="plaque-label">YOUR RANK</span>
+                    <b className="plaque-num">#{rank || result.rank || '—'}</b>
+                  </div>
+              )}
             </div>
           </div>
         </section>
 
-        {/* Qualification Decree Banner */}
-        {isPerfect ? (
-          <div className="decree-banner good th-card">
-            <span className="decree-icon">🎉</span>
-            <div className="decree-text">
-              <h4>DECREE OF ADVANCEMENT</h4>
-              <p>
-                Congratulations! You answered all <b>20 questions correctly</b>. You have conquered Round 1 and the gates of Round 2 are open for your team.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="decree-banner info th-card">
-            <span className="decree-icon">📜</span>
-            <div className="decree-text">
-              <h4>TOURNAMENT STANDINGS RECORDED</h4>
-              <p>
-                You scored <b>{result.score} of {result.total}</b>. Your score has been entered into the live leaderboard below.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Navigation Action Buttons */}
         <div className="results-actions-row">
-          <button
-            type="button"
-            className="btn-gold"
-            onClick={onProceedToRound2}
-          >
-            MOVE TO ROUND 2&nbsp;✦
-          </button>
+          {isQualified && (
+              <button
+                type="button"
+                className="btn-gold"
+                onClick={onProceedToRound2}
+              >
+                MOVE TO ROUND 2&nbsp;✦
+              </button>
+          )}
           <button
             type="button"
             className="btn-ghost"
@@ -183,95 +153,31 @@ export default function ResultsDashboard({
           >
             ← RETURN TO THE GREAT HALL
           </button>
+          
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={onLogout}
+            style={{ color: '#d9534f' }}
+          >
+            LOGOUT
+          </button>
         </div>
 
         {/* Tab Switcher: Scorecard vs Leaderboard */}
         <div className="dashboard-tabs" role="tablist">
           <button
             type="button"
-            className={`tab-btn ${activeTab === 'scorecard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('scorecard')}
+            className={`tab-btn active`}
             role="tab"
-            aria-selected={activeTab === 'scorecard'}
-          >
-            📊 SCORECARD & ANSWER REVIEW
-          </button>
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('leaderboard')}
-            role="tab"
-            aria-selected={activeTab === 'leaderboard'}
+            aria-selected={true}
           >
             🏆 TOURNAMENT LEADERBOARD
           </button>
         </div>
 
-        {/* Tab 1: Answer Review */}
-        {activeTab === 'scorecard' && (
-          <div className="review-section">
-            <div className="review-controls">
-              <h3 className="review-title">THE SCROLL, LINE BY LINE</h3>
-              <div className="filter-chips">
-                <button
-                  type="button"
-                  className={`f-chip ${reviewFilter === 'all' ? 'active' : ''}`}
-                  onClick={() => setReviewFilter('all')}
-                >
-                  ALL · {result.total}
-                </button>
-                <button
-                  type="button"
-                  className={`f-chip ${reviewFilter === 'ok' ? 'active' : ''}`}
-                  onClick={() => setReviewFilter('ok')}
-                >
-                  ✅ CORRECT · {result.score}
-                </button>
-                <button
-                  type="button"
-                  className={`f-chip ${reviewFilter === 'bad' ? 'active' : ''}`}
-                  onClick={() => setReviewFilter('bad')}
-                >
-                  ❌ MISSED · {result.total - result.score}
-                </button>
-              </div>
-            </div>
-
-            <div className="review-list">
-              {filteredReview.map((row) => (
-                <article
-                  key={row.id}
-                  className={`review-row-card th-card ${row.isCorrect ? 'ok' : 'bad'}`}
-                >
-                  <div className="row-icon">{row.isCorrect ? '✅' : '❌'}</div>
-                  <div className="row-content">
-                    <div className="row-meta">
-                      <span className="row-qnum">QUESTION {String(row.id).padStart(2, '0')}</span>
-                      <span className={`row-badge ${row.isCorrect ? 'ok' : 'bad'}`}>
-                        {row.isCorrect ? 'CORRECT' : 'INCORRECT'}
-                      </span>
-                    </div>
-                    <p className="row-question">{row.question}</p>
-                    <p className="row-ans">
-                      Your answer:&nbsp;
-                      <b>{row.userAnswer || '— not answered —'}</b>
-                    </p>
-                    {!row.isCorrect && (
-                      <p className="row-correct">
-                        Correct answer:&nbsp;
-                        <b>{row.correctAnswer}</b>
-                      </p>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Tab 2: Tournament Leaderboard */}
-        {activeTab === 'leaderboard' && (
-          <div className="leaderboard-section">
+        <div className="leaderboard-section">
             <div className="lb-controls-row">
               <input
                 type="text"
@@ -302,8 +208,6 @@ export default function ResultsDashboard({
                     <th>RANK</th>
                     <th>TEAM / PARTICIPANT</th>
                     <th>HOUSE</th>
-                    <th>SCORE</th>
-                    <th>TIME</th>
                     <th>STATUS</th>
                   </tr>
                 </thead>
@@ -331,10 +235,6 @@ export default function ResultsDashboard({
                             {team.house}
                           </span>
                         </td>
-                        <td className="score-cell">
-                          <b>{team.score}</b> / {team.total}
-                        </td>
-                        <td className="time-cell">{team.time}</td>
                         <td>
                           <span
                             className={`status-chip ${
@@ -351,7 +251,6 @@ export default function ResultsDashboard({
               </table>
             </div>
           </div>
-        )}
       </div>
     </section>
   );

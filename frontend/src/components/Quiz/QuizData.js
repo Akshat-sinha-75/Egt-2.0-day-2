@@ -255,18 +255,7 @@ export const ROUND2_TIME_LIMIT = 30 * 60; // 30 mins
 export const ROUND2_RETRY_LOCK = 30; // 30 seconds lock on wrong rune
 
 /* ── Tournament Leaderboard Mock Standings ───────────────────────────────── */
-export const INITIAL_LEADERBOARD = [
-  { rank: 1, name: 'The Marauders', teamId: 'EGT-007', house: 'Gryffindor', score: 20, total: 20, time: '04m 12s', status: 'QUALIFIED' },
-  { rank: 2, name: 'Order of the Phoenix', teamId: 'EGT-012', house: 'Gryffindor', score: 20, total: 20, time: '04m 45s', status: 'QUALIFIED' },
-  { rank: 3, name: 'Emerald Serpents', teamId: 'EGT-019', house: 'Slytherin', score: 20, total: 20, time: '05m 18s', status: 'QUALIFIED' },
-  { rank: 4, name: 'Dumbledore’s Army', teamId: 'EGT-003', house: 'Gryffindor', score: 20, total: 20, time: '05m 32s', status: 'QUALIFIED' },
-  { rank: 5, name: 'Diadem Scholars', teamId: 'EGT-028', house: 'Ravenclaw', score: 20, total: 20, time: '05m 50s', status: 'QUALIFIED' },
-  { rank: 6, name: 'Hufflepuff Badgers', teamId: 'EGT-015', house: 'Hufflepuff', score: 19, total: 20, time: '06m 02s', status: 'STANDBY' },
-  { rank: 7, name: 'Gilded Snitch Guild', teamId: 'EGT-041', house: 'Ravenclaw', score: 19, total: 20, time: '06m 24s', status: 'STANDBY' },
-  { rank: 8, name: 'Basilisk Fang Squad', teamId: 'EGT-022', house: 'Slytherin', score: 18, total: 20, time: '06m 45s', status: 'STANDBY' },
-  { rank: 9, name: 'Knight Bus Drivers', teamId: 'EGT-033', house: 'Hufflepuff', score: 18, total: 20, time: '07m 10s', status: 'STANDBY' },
-  { rank: 10, name: 'Pensieve Seekers', teamId: 'EGT-011', house: 'Ravenclaw', score: 17, total: 20, time: '07m 30s', status: 'STANDBY' },
-];
+export const INITIAL_LEADERBOARD = [];
 
 /* ── Evaluation & Grading Logic ─────────────────────────────────────────── */
 const normalize = (v) => String(v == null ? '' : v).trim().toLowerCase();

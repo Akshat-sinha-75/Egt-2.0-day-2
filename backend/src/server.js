@@ -2,12 +2,18 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const db = require('./db'); 
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+
+// Serve Admin Dashboard
+app.get(['/admin', '/admin.html'], (req, res) => {
+  res.sendFile(path.join(__dirname, '../test-frontend/admin.html'));
+});
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Node acts as a trusted server
@@ -297,7 +303,7 @@ app.get('/api/admin/teams', authenticateAdmin, async (req, res) => {
 });
 
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Backend Server running on http://localhost:${PORT}`);
 });

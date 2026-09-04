@@ -23,7 +23,7 @@ export default function CursorOrb() {
       ocx = lerp(ocx, otx, 0.08);
       ocy = lerp(ocy, oty, 0.08);
       if (orbRef.current) {
-        orbRef.current.style.transform = `translate(${ocx - 170}px, ${ocy - 170}px)`;
+        orbRef.current.style.transform = `translate3d(${ocx - 170}px, ${ocy - 170}px, 0)`;
       }
       animId = requestAnimationFrame(orbLoop);
     };
