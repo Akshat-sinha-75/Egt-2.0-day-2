@@ -37,22 +37,28 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
     };
   });
 
-  // Sync hash with stage
+  // Sync hash with stage on mount and whenever URL hash changes
   useEffect(() => {
-    const currentHash = window.location.hash.replace(/^#\/?/, '');
-    if (currentHash === 'login' && quizState.stage !== 'login' && !quizState.participant) {
-      setQuizState((prev) => ({ ...prev, stage: 'login' }));
-    } else if (currentHash === 'round-1' && quizState.participant && (!quizState.result || quizState.result.result === 'INCORRECT')) {
-      setQuizState((prev) => ({ ...prev, stage: 'round-1', result: null }));
-    } else if (currentHash === 'results' && quizState.result && quizState.result.result !== 'INCORRECT') {
-      setQuizState((prev) => ({ ...prev, stage: 'results' }));
-    } else if (currentHash === 'round-2-rules') {
-      setQuizState((prev) => ({ ...prev, stage: 'round-2-rules' }));
-    } else if (currentHash === 'round-2') {
-      setQuizState((prev) => ({ ...prev, stage: 'round-2-play' }));
-    } else if (currentHash.startsWith('round2/checkpoint')) {
-      setQuizState((prev) => ({ ...prev, stage: 'round-2-checkpoint' }));
-    }
+    const handleHashChange = () => {
+      const currentHash = window.location.hash.replace(/^#\/?/, '');
+      if (currentHash === 'login') {
+        setQuizState((prev) => ({ ...prev, stage: 'login' }));
+      } else if (currentHash === 'round-1') {
+        setQuizState((prev) => ({ ...prev, stage: 'round-1', result: null }));
+      } else if (currentHash === 'results') {
+        setQuizState((prev) => ({ ...prev, stage: 'results' }));
+      } else if (currentHash === 'round-2-rules') {
+        setQuizState((prev) => ({ ...prev, stage: 'round-2-rules' }));
+      } else if (currentHash === 'round-2') {
+        setQuizState((prev) => ({ ...prev, stage: 'round-2-play' }));
+      } else if (currentHash.startsWith('round2/checkpoint')) {
+        setQuizState((prev) => ({ ...prev, stage: 'round-2-checkpoint' }));
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   // Save changes to sessionStorage
@@ -247,6 +253,7 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
           participant={quizState.participant}
           onBackToHall={onExitToGreatHall}
           onTriggerToast={onTriggerToast}
+          onLogout={handleLogout}
         />
       );
 
