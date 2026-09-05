@@ -3,6 +3,7 @@ import LoginView from './LoginView';
 import Round1View from './Round1View';
 import ResultsDashboard from './ResultsDashboard';
 import Round2RulesView from './Round2RulesView';
+import Round2PlayView from './Round2PlayView';
 import Round2CheckpointView from './Round2CheckpointView';
 import {
   loadQuizState,
@@ -235,8 +236,17 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
       return (
         <Round2RulesView
           participant={quizState.participant || { name: 'Seeker', teamId: 'EGT-001' }}
-          onStartRound2={handleProceedToRound2}
+          onStartRound2={handleStartRound2Play}
           onBackToResults={() => navigateStage('results')}
+        />
+      );
+
+    case 'round-2-play':
+      return (
+        <Round2PlayView
+          participant={quizState.participant}
+          onBackToHall={onExitToGreatHall}
+          onTriggerToast={onTriggerToast}
         />
       );
 

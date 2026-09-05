@@ -301,6 +301,34 @@ app.get('/api/admin/teams', authenticateAdmin, async (req, res) => {
     const { data: teams } = await supabase.from('teams').select('team_id, pass, correct_code').order('team_id');
     res.json(teams || []);
 });
+
+// Admin: Get Round 2 Status
+app.get('/api/admin/round2/status', authenticateAdmin, async (req, res) => {
+  const { data: assignments, error } = await supabase
+    .from('round2_team_assignments')
+    .select('team_id, current_step, state, round2_paths(checkpoints), teams!inner(team_name)')
+    .order('team_id');
+    
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  
+  res.json(assignments || []);
+});
+
+// Admin: Reset Round 2
+app.post('/api/admin/round2/reset', authenticateAdmin, async (req, res) => {
+  const { error: resetError } = await supabase
+    .from('round2_team_assignments')
+    .update({ current_step: 0, state: 'PENDING_SOLVE', current_question_id: null })
+    .neq('team_id', 'none'); // Update all
+    
+  if (resetError) return res.status(500).json({ error: resetError.message });
+  
+  await supabase.from('round2_progress').delete().neq('team_id', 'none');
+  
+  res.json({ message: 'Round 2 has been reset to starting state.' });
+});
 // ------------------------------------------------------------------
 // ROUND 2 APIs
 // ------------------------------------------------------------------
