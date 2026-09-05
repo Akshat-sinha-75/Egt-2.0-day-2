@@ -60,6 +60,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
   });
 
   const token = participant?.token || localStorage.getItem('R2_Token');
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
   useEffect(() => {
     if (!token) {
@@ -84,7 +85,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
   const fetchCurrentState = async () => {
     setUiState('loading');
     try {
-      const res = await fetch('http://localhost:3001/api/round2/current', {
+      const res = await fetch(`${API_BASE_URL}/round2/current`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -131,7 +132,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
     
     setUiState('loading');
     try {
-      const res = await fetch('http://localhost:3001/api/round2/submit', {
+      const res = await fetch(`${API_BASE_URL}/round2/submit`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

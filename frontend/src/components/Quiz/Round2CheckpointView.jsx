@@ -67,6 +67,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
   });
   
   const qrCode = window.location.hash.split('/').pop();
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
   useEffect(() => {
     if (!token) {
@@ -80,7 +81,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
     e.preventDefault();
     setUiState('loading');
     try {
-      const res = await fetch('http://localhost:3001/api/login', {
+      const res = await fetch(`${API_BASE_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teamId: teamId.trim(), pass: pass.trim() })
@@ -100,7 +101,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
   const handleScanQr = async () => {
     setUiState('scanning');
     try {
-      const res = await fetch('http://localhost:3001/api/round2/scan_qr', {
+      const res = await fetch(`${API_BASE_URL}/round2/scan_qr`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -145,7 +146,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
 
   const fetchCurrentState = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/round2/current', {
+      const res = await fetch(`${API_BASE_URL}/round2/current`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -192,7 +193,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
 
     setUiState('loading');
     try {
-      const res = await fetch('http://localhost:3001/api/round2/submit', {
+      const res = await fetch(`${API_BASE_URL}/round2/submit`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
