@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { spawnSparks } from '../../utils/sparks';
+import { API_BASE_URL } from '../../utils/api';
 import './Quiz.css';
 import './Round2CheckpointView.css';
 
@@ -60,7 +61,6 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
   });
 
   const token = participant?.token || localStorage.getItem('R2_Token');
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
   useEffect(() => {
     if (!token) {

@@ -1,6 +1,11 @@
-// frontend/src/utils/api.js
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+export const API_BASE_URL = (() => {
+  let url = (import.meta.env.VITE_API_URL || 'http://localhost:3001').trim();
+  url = url.replace(/\/+$/, '');
+  if (!url.endsWith('/api')) {
+    url += '/api';
+  }
+  return url;
+})();
 
 async function parseResponse(response) {
   const text = await response.text();
