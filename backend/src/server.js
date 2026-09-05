@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const db = require('./db'); 
+// const db = require('./db'); 
 
 const app = express();
 app.use(cors());
@@ -27,7 +27,7 @@ const authenticate = async (req, res, next) => {
     return res.status(401).json({ error: 'Missing or invalid Authorization header' });
   }
   const token = authHeader.split(' ')[1];
-  
+
   // Verify token with Supabase Auth
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) {
@@ -45,7 +45,7 @@ const authenticate = async (req, res, next) => {
     console.error('Auth error fetching team:', dbError, 'UserID:', user.id, 'SupabaseKey length:', supabaseKey ? supabaseKey.length : 0);
     return res.status(401).json({ error: 'Team profile not found' });
   }
-  
+
   req.team = team;
   next();
 };
@@ -57,15 +57,15 @@ const authenticateAdmin = async (req, res, next) => {
     return res.status(401).json({ error: 'Missing or invalid Authorization header' });
   }
   const token = authHeader.split(' ')[1];
-  
+
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) {
     return res.status(401).json({ error: 'Unauthorized Admin Token' });
   }
-  
+
   // Verify it's the admin
   if (user.email !== 'admin@treasurehunt.local') {
-     return res.status(403).json({ error: 'Forbidden: Admin access only' });
+    return res.status(403).json({ error: 'Forbidden: Admin access only' });
   }
 
   next();
@@ -75,19 +75,19 @@ const authenticateAdmin = async (req, res, next) => {
 app.post('/api/login', async (req, res) => {
   const { teamId, pass } = req.body;
   const email = `${teamId.toLowerCase()}@treasurehunt.local`;
-  
+
   // Use a fresh client to avoid modifying the server's global service role session!
   const authClient = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
-  
+
   const { data, error } = await authClient.auth.signInWithPassword({
     email,
     password: pass
   });
-  
+
   if (error || !data.user) {
     return res.status(401).json({ error: 'Invalid Team ID or Password' });
   }
-  
+
   res.json({
     message: 'Login successful',
     token: data.session.access_token, // JWT to send in future requests
@@ -98,18 +98,18 @@ app.post('/api/login', async (req, res) => {
 // Admin Login Proxy
 app.post('/api/admin/login', async (req, res) => {
   const { pass } = req.body;
-  
+
   const authClient = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
-  
+
   const { data, error } = await authClient.auth.signInWithPassword({
     email: 'admin@treasurehunt.local',
     password: pass
   });
-  
+
   if (error || !data.user) {
     return res.status(401).json({ error: 'Invalid Admin Password' });
   }
-  
+
   res.json({
     message: 'Admin login successful',
     token: data.session.access_token
@@ -119,9 +119,9 @@ app.post('/api/admin/login', async (req, res) => {
 // 2. Fetch Questions
 app.get('/api/questions', authenticate, async (req, res) => {
   const teamNum = parseInt(req.team.team_id.replace('TH-', ''), 10);
-  
+
   const { data: config } = await supabase.from('round_config').select('*').eq('id', 1).single();
-  
+
   if (config.status !== 'ACTIVE') {
     return res.json({
       roundStatus: config.status,
@@ -133,17 +133,17 @@ app.get('/api/questions', authenticate, async (req, res) => {
 
   const { data: hints } = await supabase.from('question_hints').select('*');
   const { data: templates } = await supabase.from('question_templates').select('*').order('id');
-  
+
   const hintMap = {};
   if (hints) {
     hints.forEach(h => hintMap[h.question_id] = h.enabled);
   }
-  
+
   const questions = (templates || []).map(q => {
     return {
       id: q.id,
-      text: q.question_text, 
-      hint: hintMap[q.id] ? q.hint : null 
+      text: q.question_text,
+      hint: hintMap[q.id] ? q.hint : null
     };
   });
 
@@ -247,7 +247,7 @@ app.get('/api/admin/status', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/hints', authenticateAdmin, async (req, res) => {
   const { questionId, enabled } = req.body;
   const { error } = await supabase.from('question_hints').update({ enabled }).eq('question_id', questionId);
-  
+
   if (error) return res.status(400).json({ error: error.message });
   res.json({ message: `Hint for ${questionId} set to ${enabled}` });
 });
@@ -281,7 +281,7 @@ app.post('/api/admin/stop', authenticateAdmin, async (req, res) => {
 
 app.post('/api/admin/reset', authenticateAdmin, async (req, res) => {
   const past = new Date(Date.now() - 3600000).toISOString();
-  
+
   // 1. Reset timer config
   const { error: configError } = await supabase.from('round_config').update({
     status: 'CLOSED',
@@ -298,8 +298,8 @@ app.post('/api/admin/reset', authenticateAdmin, async (req, res) => {
 });
 
 app.get('/api/admin/teams', authenticateAdmin, async (req, res) => {
-    const { data: teams } = await supabase.from('teams').select('team_id, pass, correct_code').order('team_id');
-    res.json(teams || []);
+  const { data: teams } = await supabase.from('teams').select('team_id, pass, correct_code').order('team_id');
+  res.json(teams || []);
 });
 
 // Admin: Get Round 2 Status
@@ -308,11 +308,11 @@ app.get('/api/admin/round2/status', authenticateAdmin, async (req, res) => {
     .from('round2_team_assignments')
     .select('team_id, current_step, state, round2_paths(checkpoints), teams!inner(team_name)')
     .order('team_id');
-    
+
   if (error) {
     return res.status(500).json({ error: error.message });
   }
-  
+
   res.json(assignments || []);
 });
 
@@ -322,11 +322,11 @@ app.post('/api/admin/round2/reset', authenticateAdmin, async (req, res) => {
     .from('round2_team_assignments')
     .update({ current_step: 0, state: 'PENDING_SOLVE', current_question_id: null })
     .neq('team_id', 'none'); // Update all
-    
+
   if (resetError) return res.status(500).json({ error: resetError.message });
-  
+
   await supabase.from('round2_progress').delete().neq('team_id', 'none');
-  
+
   res.json({ message: 'Round 2 has been reset to starting state.' });
 });
 // ------------------------------------------------------------------
@@ -349,16 +349,30 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
 
   const checkpoints = assignment.round2_paths.checkpoints;
   const currentStep = assignment.current_step;
+  const totalSteps = checkpoints.length;
 
   if (assignment.state === 'COMPLETE' || currentStep >= checkpoints.length) {
-    return res.json({ state: 'COMPLETE' });
+    return res.json({
+      state: 'COMPLETE',
+      currentStep: currentStep,
+      totalSteps: totalSteps,
+      stepNumber: totalSteps,
+      remainingSteps: 0
+    });
   }
 
   const targetDestId = checkpoints[currentStep];
   const { data: dest } = await supabase.from('round2_destinations').select('*').eq('id', targetDestId).single();
 
   if (assignment.state === 'TRANSIT') {
-    return res.json({ state: 'TRANSIT', nextDestination: dest.name });
+    return res.json({
+      state: 'TRANSIT',
+      nextDestination: dest ? dest.name : 'Next Checkpoint',
+      currentStep: currentStep,
+      totalSteps: totalSteps,
+      stepNumber: currentStep + 1,
+      remainingSteps: totalSteps - currentStep
+    });
   }
 
   // State is PENDING_SOLVE
@@ -369,12 +383,12 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
       .from('round2_questions')
       .select('id, question_text, difficulty')
       .eq('destination_id', targetDestId);
-    
+
     if (questions && questions.length > 0) {
       let selectedQuestion;
       const rand = Math.random() * 5;
       let cumulative = 0;
-      
+
       for (const q of questions) {
         const weight = q.difficulty === 'EASY' ? 1.5 : 0.875;
         cumulative += weight;
@@ -396,7 +410,12 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
 
   res.json({
     state: 'PENDING_SOLVE',
-    question: qData ? qData.question_text : 'No question available.'
+    question: qData ? qData.question_text : 'No question available.',
+    currentStep: currentStep,
+    totalSteps: totalSteps,
+    stepNumber: currentStep + 1,
+    remainingSteps: totalSteps - currentStep,
+    currentDestination: dest ? dest.name : null
   });
 });
 
@@ -415,7 +434,7 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
   }
 
   const { data: qData } = await supabase.from('round2_questions').select('*').eq('id', assignment.current_question_id).single();
-  
+
   if (!qData || qData.correct_answer.toLowerCase() !== answer.trim().toLowerCase()) {
     return res.status(400).json({ error: 'Incorrect answer. Please try again.' });
   }
@@ -426,10 +445,20 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
     current_question_id: null
   }).eq('team_id', teamId);
 
-  const targetDestId = assignment.round2_paths.checkpoints[assignment.current_step];
+  const checkpoints = assignment.round2_paths.checkpoints;
+  const currentStep = assignment.current_step;
+  const totalSteps = checkpoints.length;
+  const targetDestId = checkpoints[currentStep];
   const { data: dest } = await supabase.from('round2_destinations').select('*').eq('id', targetDestId).single();
 
-  res.json({ success: true, nextDestination: dest.name });
+  res.json({
+    success: true,
+    nextDestination: dest ? dest.name : 'Next Checkpoint',
+    currentStep: currentStep,
+    totalSteps: totalSteps,
+    stepNumber: currentStep + 1,
+    remainingSteps: totalSteps - currentStep
+  });
 });
 
 app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
@@ -460,7 +489,7 @@ app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
 
   if (dest.id !== expectedDestId) {
     const { data: expectedDest } = await supabase.from('round2_destinations').select('name').eq('id', expectedDestId).single();
-    return res.status(400).json({ error: `You have not cleared previous checkpoints. You have to move to ${expectedDest.name}.` });
+    return res.status(400).json({ error: `You have not cleared previous checkpoints. You have to move to ${expectedDest ? expectedDest.name : expectedDestId}.` });
   }
 
   // Correct destination reached!
@@ -476,10 +505,25 @@ app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
 
   if (isComplete) {
     await supabase.from('round2_team_assignments').update({ current_step: nextStep, state: 'COMPLETE' }).eq('team_id', teamId);
-    return res.json({ state: 'COMPLETE', message: 'Hunt Completed!' });
+    return res.json({
+      state: 'COMPLETE',
+      message: 'Hunt Completed!',
+      currentStep: nextStep,
+      totalSteps: checkpoints.length,
+      stepNumber: checkpoints.length,
+      remainingSteps: 0
+    });
   } else {
     await supabase.from('round2_team_assignments').update({ current_step: nextStep, state: 'PENDING_SOLVE' }).eq('team_id', teamId);
-    return res.json({ state: 'PENDING_SOLVE', message: `Arrived at ${dest.name}!` });
+    return res.json({
+      state: 'PENDING_SOLVE',
+      message: `Arrived at ${dest.name}!`,
+      currentStep: nextStep,
+      totalSteps: checkpoints.length,
+      stepNumber: nextStep + 1,
+      remainingSteps: checkpoints.length - nextStep,
+      currentDestination: dest.name
+    });
   }
 });
 
