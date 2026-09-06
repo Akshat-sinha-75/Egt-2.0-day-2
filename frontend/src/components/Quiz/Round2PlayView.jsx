@@ -193,7 +193,8 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
 
   const pushMessage = getMotivationalPush(stepInfo.remainingSteps, stepInfo.stepNumber, stepInfo.totalSteps);
 
-  const totalNodes = stepInfo.totalSteps || 7;
+  // 8 nodes: INITIAL + CP1-CP6 + FINAL
+  const totalNodes = (stepInfo.totalSteps || 7) + 1;
   const nodes = Array.from({ length: totalNodes }, (_, idx) => idx);
   const activeIdx = Math.min(stepInfo.currentStep, totalNodes - 1);
   const fillPercentage = (activeIdx / (totalNodes - 1)) * 100;
@@ -243,10 +244,10 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
               <span className="r2-roadmap-status">
                 <span>⚡</span>
                 {uiState === 'complete' 
-                  ? 'ALL 7 CHECKPOINTS CLEARED!' 
+                  ? `ALL ${stepInfo.totalSteps - 1} CHECKPOINTS CLEARED!` 
                   : stepInfo.currentStep === 0
-                  ? 'STARTING TRIAL • 7 CHECKPOINTS TO GO'
-                  : `CHECKPOINT ${stepInfo.currentStep} OF ${stepInfo.totalSteps} CLEARED`}
+                  ? `STARTING TRIAL • ${stepInfo.totalSteps - 1} CHECKPOINTS TO GO`
+                  : `CHECKPOINT ${stepInfo.currentStep} OF ${stepInfo.totalSteps - 1} CLEARED`}
               </span>
               <span className="r2-roadmap-remaining">
                 {uiState === 'complete'
@@ -266,22 +267,23 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
               </div>
 
               {nodes.map((idx) => {
+                // INITIAL = idx 0, CP1-CP6 = idx 1-6, FINAL = idx 7
+                const isFinal = idx === totalNodes - 1;
                 const isDone = uiState === 'complete' || idx < stepInfo.currentStep;
                 const isActive = uiState !== 'complete' && idx === stepInfo.currentStep;
-                const isFountain = idx === totalNodes - 1;
 
                 let nodeClass = 'r2-node-circle';
                 if (isDone) nodeClass += ' done';
                 else if (isActive) nodeClass += ' active';
-                if (isFountain) nodeClass += ' fountain-node';
+                if (isFinal) nodeClass += ' fountain-node';
 
                 return (
                   <div key={idx} className="r2-node-wrapper">
                     <div className={nodeClass}>
-                      {isDone ? '✓' : isFountain ? '🏆' : idx === 0 ? '⚡' : idx}
+                      {isDone ? '✓' : isFinal ? '🏆' : idx === 0 ? '⚡' : idx}
                     </div>
                     <span className={`r2-node-label ${isActive ? 'active-label' : ''}`}>
-                      {isFountain ? 'FINAL' : idx === 0 ? 'START' : `CP ${idx}`}
+                      {isFinal ? 'FINAL' : idx === 0 ? 'INITIAL' : `CP ${idx}`}
                     </span>
                   </div>
                 );
