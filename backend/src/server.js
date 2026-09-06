@@ -362,16 +362,26 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
   }
 
   const targetDestId = checkpoints[currentStep];
-  const { data: dest } = await supabase.from('round2_destinations').select('*').eq('id', targetDestId).single();
+  const { data: targetDest } = await supabase.from('round2_destinations').select('*').eq('id', targetDestId).single();
+
+  // The checkpoint the team physically arrived at (checkpoints[currentStep - 1]), if they have cleared at least one scan
+  let arrivedDestName = null;
+  if (currentStep > 0) {
+    const arrivedDestId = checkpoints[currentStep - 1];
+    const { data: arrivedDest } = await supabase.from('round2_destinations').select('name').eq('id', arrivedDestId).single();
+    if (arrivedDest) arrivedDestName = arrivedDest.name;
+  }
 
   if (assignment.state === 'TRANSIT') {
     return res.json({
       state: 'TRANSIT',
-      nextDestination: dest ? dest.name : 'Next Checkpoint',
+      nextDestination: targetDest ? targetDest.name : 'Next Checkpoint',
       currentStep: currentStep,
       totalSteps: totalSteps,
-      stepNumber: currentStep + 1,
-      remainingSteps: totalSteps - currentStep
+      stepNumber: currentStep,
+      remainingSteps: totalSteps - currentStep,
+      arrivedDestination: arrivedDestName,
+      isInitialStart: currentStep === 0
     });
   }
 
@@ -413,9 +423,12 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
     question: qData ? qData.question_text : 'No question available.',
     currentStep: currentStep,
     totalSteps: totalSteps,
-    stepNumber: currentStep + 1,
+    stepNumber: currentStep,
     remainingSteps: totalSteps - currentStep,
-    currentDestination: dest ? dest.name : null
+    arrivedDestination: arrivedDestName,
+    currentDestination: arrivedDestName,
+    nextDestination: targetDest ? targetDest.name : null,
+    isInitialStart: currentStep === 0
   });
 });
 
@@ -451,13 +464,22 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
   const targetDestId = checkpoints[currentStep];
   const { data: dest } = await supabase.from('round2_destinations').select('*').eq('id', targetDestId).single();
 
+  let arrivedDestName = null;
+  if (currentStep > 0) {
+    const arrivedDestId = checkpoints[currentStep - 1];
+    const { data: arrivedDest } = await supabase.from('round2_destinations').select('name').eq('id', arrivedDestId).single();
+    if (arrivedDest) arrivedDestName = arrivedDest.name;
+  }
+
   res.json({
     success: true,
     nextDestination: dest ? dest.name : 'Next Checkpoint',
     currentStep: currentStep,
     totalSteps: totalSteps,
-    stepNumber: currentStep + 1,
-    remainingSteps: totalSteps - currentStep
+    stepNumber: currentStep,
+    remainingSteps: totalSteps - currentStep,
+    arrivedDestination: arrivedDestName,
+    isInitialStart: currentStep === 0
   });
 });
 
@@ -520,8 +542,9 @@ app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
       message: `Arrived at ${dest.name}!`,
       currentStep: nextStep,
       totalSteps: checkpoints.length,
-      stepNumber: nextStep + 1,
+      stepNumber: nextStep,
       remainingSteps: checkpoints.length - nextStep,
+      arrivedDestination: dest.name,
       currentDestination: dest.name
     });
   }

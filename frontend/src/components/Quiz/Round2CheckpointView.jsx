@@ -6,7 +6,15 @@ import './Round2CheckpointView.css';
 /**
  * Returns dynamic, high-adrenaline motivational push copy based on remaining checkpoints
  */
-function getMotivationalPush(remainingSteps, stepNumber, totalSteps = 7) {
+function getMotivationalPush(remainingSteps, currentStep, totalSteps = 7) {
+  if (currentStep === 0) {
+    return {
+      theme: 'normal',
+      pill: '🏃 FIRST STRETCH • THE RACE IS ON',
+      headline: 'FIRST DESTINATION UNLOCKED! SPRINT!',
+      subtext: 'The tournament clock has started! Sprint to your first checkpoint on campus and scan the QR code to check in!'
+    };
+  }
   if (remainingSteps === 1) {
     return {
       theme: 'climax',
@@ -62,9 +70,11 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
   const [stepInfo, setStepInfo] = useState({
     currentStep: 0,
     totalSteps: 7,
-    stepNumber: 1,
-    remainingSteps: 6,
-    currentDestination: null
+    stepNumber: 0,
+    remainingSteps: 7,
+    currentDestination: null,
+    arrivedDestination: null,
+    isInitialStart: true
   });
   
   const qrCode = window.location.hash.split('/').pop();
@@ -127,8 +137,10 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           currentStep: data.currentStep,
           totalSteps: data.totalSteps || 7,
           remainingSteps: data.remainingSteps !== undefined ? data.remainingSteps : Math.max(0, (data.totalSteps || 7) - data.currentStep),
-          stepNumber: data.stepNumber || (data.currentStep + 1),
-          currentDestination: data.currentDestination || null
+          stepNumber: data.currentStep,
+          currentDestination: data.arrivedDestination || data.currentDestination || null,
+          arrivedDestination: data.arrivedDestination || data.currentDestination || null,
+          isInitialStart: data.currentStep === 0
         });
       }
 
@@ -166,8 +178,10 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           currentStep: data.currentStep,
           totalSteps: data.totalSteps || 7,
           remainingSteps: data.remainingSteps !== undefined ? data.remainingSteps : Math.max(0, (data.totalSteps || 7) - data.currentStep),
-          stepNumber: data.stepNumber || (data.currentStep + 1),
-          currentDestination: data.currentDestination || null
+          stepNumber: data.currentStep,
+          currentDestination: data.arrivedDestination || data.currentDestination || null,
+          arrivedDestination: data.arrivedDestination || data.currentDestination || null,
+          isInitialStart: data.currentStep === 0
         });
       }
       
@@ -222,7 +236,10 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           currentStep: data.currentStep,
           totalSteps: data.totalSteps || 7,
           remainingSteps: data.remainingSteps !== undefined ? data.remainingSteps : Math.max(0, (data.totalSteps || 7) - data.currentStep),
-          stepNumber: data.stepNumber || (data.currentStep + 1)
+          stepNumber: data.currentStep,
+          currentDestination: data.arrivedDestination || data.currentDestination || null,
+          arrivedDestination: data.arrivedDestination || data.currentDestination || null,
+          isInitialStart: data.currentStep === 0
         });
       }
 
@@ -237,7 +254,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
     }
   };
 
-  const pushMessage = getMotivationalPush(stepInfo.remainingSteps, stepInfo.stepNumber, stepInfo.totalSteps);
+  const pushMessage = getMotivationalPush(stepInfo.remainingSteps, stepInfo.currentStep, stepInfo.totalSteps);
 
   // Render nodes for 7 checkpoints
   const totalNodes = stepInfo.totalSteps || 7;
@@ -260,7 +277,9 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
             </span>
           </div>
           <h1 className="r2-title">
-            {uiState === 'transit' ? 'CHECKPOINT CLEARED!' : 'CHECKPOINT VERIFICATION'}
+            {uiState === 'transit' 
+              ? (stepInfo.currentStep === 0 ? 'DESTINATION UNLOCKED!' : 'CHECKPOINT CLEARED!') 
+              : 'CHECKPOINT VERIFICATION'}
           </h1>
           <div className="r2-qr-pill">
             <span>📍 SCAN ID:</span>
@@ -276,7 +295,9 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
                 <span>⚡</span>
                 {uiState === 'complete' 
                   ? 'ALL 7 CHECKPOINTS COMPLETED!' 
-                  : `CHECKPOINT ${stepInfo.stepNumber} OF ${stepInfo.totalSteps}`}
+                  : stepInfo.currentStep === 0
+                  ? 'STARTING TRIAL • 7 CHECKPOINTS TO GO'
+                  : `CHECKPOINT ${stepInfo.currentStep} OF ${stepInfo.totalSteps} CLEARED`}
               </span>
               <span className="r2-roadmap-remaining">
                 {uiState === 'complete'
@@ -405,13 +426,17 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           <div className="r2-riddle-container">
             <div className="r2-solved-banner">
               <span>📍</span>
-              {stepInfo.currentDestination 
-                ? `ARRIVED AT: ${stepInfo.currentDestination}` 
-                : 'CHECKPOINT SCANNED'}
+              {stepInfo.currentStep === 0
+                ? 'INITIAL TRIAL • STARTING CLUE'
+                : stepInfo.arrivedDestination || stepInfo.currentDestination
+                ? `ARRIVED AT: ${stepInfo.arrivedDestination || stepInfo.currentDestination}`
+                : `CHECKPOINT ${stepInfo.currentStep} REACHED`}
             </div>
             
             <p className="r2-riddle-intro">
-              Decipher the riddle below to unlock your next destination coordinates:
+              {stepInfo.currentStep === 0
+                ? 'Decipher this starting riddle to reveal your First Checkpoint on campus:'
+                : 'Checkpoint verified! Decipher the riddle below to unlock your next destination coordinates:'}
             </p>
             
             <div className="r2-riddle-parchment">
@@ -439,11 +464,13 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
         {uiState === 'transit' && (
           <div className="r2-transit-card">
             <div className="r2-transit-badge">
-              <span>✓</span> CORRECT ANSWER CONFIRMED!
+              <span>✓</span> {stepInfo.currentStep === 0 ? 'FIRST DESTINATION UNLOCKED!' : `CHECKPOINT ${stepInfo.currentStep} OF ${stepInfo.totalSteps} CLEARED!`}
             </div>
 
             <div className="r2-dest-spotlight">
-              <p className="r2-dest-kicker">RUN IMMEDIATELY TO YOUR NEXT DESTINATION</p>
+              <p className="r2-dest-kicker">
+                {stepInfo.currentStep === 0 ? 'SPRINT TO YOUR FIRST CHECKPOINT' : 'RUN IMMEDIATELY TO YOUR NEXT DESTINATION'}
+              </p>
               <h2 className="r2-dest-name">{nextDest}</h2>
               <p className="r2-dest-instruction">
                 Sprint to this location on campus right now!
