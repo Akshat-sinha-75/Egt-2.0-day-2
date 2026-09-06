@@ -16,9 +16,9 @@ function getMotivationalPush(remainingSteps, currentStep, totalSteps = 7) {
   if (remainingSteps === 1) {
     return {
       theme: 'climax',
-      pill: '🔥 FINAL SPRINT • THE FOUNTAIN AWAITS',
-      headline: 'RUN TO THE FOUNTAIN! EGT 2.0 IS YOURS TO WIN!',
-      subtext: 'This is the ultimate showdown! You have conquered all previous trials. Sprint to the Fountain QR code right now and claim victory!'
+      pill: '🔥 FINAL SPRINT • THE FINAL AWAITS',
+      headline: 'SPRINT TO THE FINAL! EGT 2.0 IS YOURS TO WIN!',
+      subtext: 'This is the ultimate showdown! You have conquered all previous trials. Sprint to the Final checkpoint QR code right now and claim victory!'
     };
   }
   if (remainingSteps === 2) {
@@ -252,8 +252,8 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
                 {uiState === 'complete'
                   ? '🏆 CHAMPION'
                   : stepInfo.remainingSteps === 1
-                  ? '🔥 FOUNTAIN NEXT!'
-                  : `${stepInfo.remainingSteps} to Fountain`}
+                  ? '🔥 FINAL NEXT!'
+                  : `${stepInfo.remainingSteps} to Final`}
               </span>
             </div>
 
@@ -278,10 +278,10 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
                 return (
                   <div key={idx} className="r2-node-wrapper">
                     <div className={nodeClass}>
-                      {isDone ? '✓' : isFountain ? '🏆' : idx + 1}
+                      {isDone ? '✓' : isFountain ? '🏆' : idx === 0 ? '⚡' : idx}
                     </div>
                     <span className={`r2-node-label ${isActive ? 'active-label' : ''}`}>
-                      {isFountain ? 'FOUNTAIN' : `CP ${idx + 1}`}
+                      {isFountain ? 'FINAL' : idx === 0 ? 'START' : `CP ${idx}`}
                     </span>
                   </div>
                 );
