@@ -452,17 +452,45 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
     return res.status(400).json({ error: 'Incorrect answer. Please try again.' });
   }
 
-  // Correct answer! Move to TRANSIT state
-  await supabase.from('round2_team_assignments').update({
-    state: 'TRANSIT',
-    current_question_id: null
-  }).eq('team_id', teamId);
-
   const checkpoints = assignment.round2_paths.checkpoints;
   const currentStep = assignment.current_step;
   const totalSteps = checkpoints.length;
   const targetDestId = checkpoints[currentStep];
   const { data: dest } = await supabase.from('round2_destinations').select('*').eq('id', targetDestId).single();
+
+  const isFinalCheckpoint = currentStep === totalSteps - 1;
+
+  if (isFinalCheckpoint) {
+    // Last riddle solved — auto-complete. No fountain QR scan needed.
+    await supabase.from('round2_team_assignments').update({
+      state: 'COMPLETE',
+      current_step: totalSteps,
+      current_question_id: null
+    }).eq('team_id', teamId);
+
+    // Log final progress
+    await supabase.from('round2_progress').insert({
+      team_id: teamId,
+      destination_id: targetDestId,
+      step_no: totalSteps
+    });
+
+    return res.json({
+      state: 'COMPLETE',
+      message: 'All checkpoints conquered! Sprint to the Fountain!',
+      finalDestination: dest ? dest.name : 'Fountain',
+      currentStep: totalSteps,
+      totalSteps: totalSteps,
+      stepNumber: totalSteps,
+      remainingSteps: 0
+    });
+  }
+
+  // Not the final checkpoint — move to TRANSIT
+  await supabase.from('round2_team_assignments').update({
+    state: 'TRANSIT',
+    current_question_id: null
+  }).eq('team_id', teamId);
 
   let arrivedDestName = null;
   if (currentStep > 0) {
@@ -473,6 +501,7 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
 
   res.json({
     success: true,
+    state: 'TRANSIT',
     nextDestination: dest ? dest.name : 'Next Checkpoint',
     currentStep: currentStep,
     totalSteps: totalSteps,
@@ -482,6 +511,7 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
     isInitialStart: currentStep === 0
   });
 });
+
 
 app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
   const teamId = req.team.team_id;

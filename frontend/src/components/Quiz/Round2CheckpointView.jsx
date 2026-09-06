@@ -244,10 +244,26 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
       }
 
       spawnSparks(window.innerWidth / 2, window.innerHeight / 2, '#43e08a', 35);
-      setNextDest(data.nextDestination);
       setAnswerInput('');
-      setUiState('transit');
-      if (onTriggerToast) onTriggerToast(' CORRECT! SPRINT TO NEXT DESTINATION! ');
+
+      if (data.state === 'COMPLETE') {
+        // Final riddle solved — auto-complete, sprint to fountain
+        if (data.currentStep !== undefined) {
+          setStepInfo(prev => ({
+            ...prev,
+            currentStep: data.currentStep,
+            totalSteps: data.totalSteps || 7,
+            remainingSteps: 0
+          }));
+        }
+        spawnSparks(window.innerWidth / 2, window.innerHeight / 2, '#ffd700', 50);
+        setUiState('complete');
+        if (onTriggerToast) onTriggerToast(' 🏆 ALL RIDDLES SOLVED! SPRINT TO THE FOUNTAIN! ');
+      } else {
+        setNextDest(data.nextDestination);
+        setUiState('transit');
+        if (onTriggerToast) onTriggerToast(' CORRECT! SPRINT TO NEXT DESTINATION! ');
+      }
     } catch (err) {
       if (onTriggerToast) onTriggerToast(` ERROR: ${err.message} `);
       setUiState('solving');
@@ -496,15 +512,18 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           </div>
         )}
 
-        {/* State 6: Complete (Final Scanned) */}
+        {/* State 6: Complete (Final Riddle Solved — Sprint to Fountain!) */}
         {uiState === 'complete' && (
           <div className="r2-complete-card">
             <div className="r2-trophy-aura">🏆</div>
-            <h2 className="r2-complete-title">HUNT COMPLETED!</h2>
-            <p className="r2-complete-sub">ALL 7 CHECKPOINTS CONQUERED!</p>
+            <h2 className="r2-complete-title">ALL RIDDLES SOLVED!</h2>
+            <p className="r2-complete-sub" style={{ color: '#ffd700', fontSize: '1.1rem', fontWeight: 800 }}>
+              🏃 SPRINT TO THE FOUNTAIN RIGHT NOW!
+            </p>
             <p className="r2-complete-desc">
-              Unbelievable speed and teamwork! You have cleared all 7 checkpoints of EGT 2.0. 
-              Report immediately to the tournament marshals at the Great Hall to record your official time!
+              You have conquered all 6 checkpoints and solved every riddle! 
+              The race is yours — run to the Fountain as fast as you can to claim victory!
+              Report your time to the tournament marshals on arrival.
             </p>
             {onBackToHall && (
               <button type="button" className="r2-btn-gold" onClick={onBackToHall}>
