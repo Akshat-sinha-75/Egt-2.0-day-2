@@ -71,7 +71,7 @@ export default function ExamSection({ onTriggerToast, onStartQuiz }) {
       <p className="sec-sub reveal">PROVE YOUR KNOWLEDGE. EARN YOUR HOUSE POINTS.</p>
       <div className="reveal">
         <span className="points-pill">
-          🏆&nbsp; HOUSE POINTS :&nbsp;<b id="housePoints">{housePoints}</b>
+          ✦&nbsp; HOUSE POINTS :&nbsp;<b id="housePoints">{housePoints}</b>
         </span>
       </div>
 

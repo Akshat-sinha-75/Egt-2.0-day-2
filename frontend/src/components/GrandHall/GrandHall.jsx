@@ -13,9 +13,12 @@ const HALL_CANDLES = [
 const MAGICAL_OBJECTS = [
   {
     id: 'snitch',
-    x: 12,
-    y: 16,
-    w: 120,
+    title: 'GOLDEN SNITCH',
+    quote: 'I open at the close.',
+    desc: '150 points to the seeker who captures this elusive enchanted golden sphere.',
+    x: 14,
+    y: 20,
+    w: 116,
     dur: '5.6s',
     del: '0s',
     svg: (
@@ -56,33 +59,12 @@ const MAGICAL_OBJECTS = [
     ),
   },
   {
-    id: 'lightning',
-    x: 47,
-    y: 6,
-    w: 56,
-    dur: '6.8s',
-    del: '-2s',
-    svg: (
-      <svg viewBox="0 0 60 100">
-        <defs>
-          <linearGradient id="ltG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ffe9a8" />
-            <stop offset="100%" stopColor="#d8912a" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M36 2 L10 54 H28 L20 98 L50 40 H31 Z"
-          fill="url(#ltG)"
-          stroke="#8a5a12"
-          strokeWidth="1.5"
-        />
-      </svg>
-    ),
-  },
-  {
     id: 'owl',
-    x: 90,
-    y: 30,
+    title: 'HEDWIG · POST OWL',
+    quote: 'Your acceptance letter has arrived.',
+    desc: 'Faithful snowy courier delivering secret dispatches and tournament clues across realms.',
+    x: 86,
+    y: 20,
     w: 92,
     dur: '6.6s',
     del: '-3s',
@@ -123,8 +105,11 @@ const MAGICAL_OBJECTS = [
   },
   {
     id: 'potion',
-    x: 9,
-    y: 58,
+    title: 'FELIX FELICIS',
+    quote: 'Liquid luck in a vial.',
+    desc: 'Brewed for six months to grant boundless ingenuity, precision, and triumph to the drinker.',
+    x: 10,
+    y: 56,
     w: 78,
     dur: '7.4s',
     del: '-1s',
@@ -164,44 +149,13 @@ const MAGICAL_OBJECTS = [
     ),
   },
   {
-    id: 'broom',
-    x: 40,
-    y: 86,
-    w: 120,
-    dur: '6.2s',
-    del: '-2.6s',
-    svg: (
-      <svg viewBox="0 0 150 60">
-        <defs>
-          <linearGradient id="brH" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#6b4326" />
-            <stop offset="100%" stopColor="#9a6a34" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M6 28 C30 24 62 24 92 26 L92 34 C62 36 30 36 6 34 Z"
-          fill="url(#brH)"
-        />
-        <rect x="90" y="22" width="10" height="16" rx="3" fill="#a32020" />
-        <path
-          d="M100 20 C118 12 136 14 146 22 C138 25 136 29 140 33 C132 40 116 40 100 38 Z"
-          fill="#d8a04a"
-        />
-        <path
-          d="M104 26 L138 21 M104 30 L142 29 M104 34 L136 37"
-          stroke="#b98434"
-          strokeWidth="1.4"
-          opacity="0.8"
-          fill="none"
-        />
-      </svg>
-    ),
-  },
-  {
     id: 'letter',
-    x: 85,
-    y: 78,
-    w: 104,
+    title: 'ACCEPTANCE SCROLL',
+    quote: 'You are summoned to EGT 2.0.',
+    desc: 'Official tournament summons sealed with enchanted wax. Pack your code and wand.',
+    x: 88,
+    y: 56,
+    w: 100,
     dur: '6.4s',
     del: '-1.4s',
     svg: (
@@ -233,13 +187,79 @@ const MAGICAL_OBJECTS = [
       </svg>
     ),
   },
+  {
+    id: 'broom',
+    title: 'NIMBUS 2000',
+    quote: 'Fastest broom in the skies.',
+    desc: 'Crafted with mahogany and enchanted birch twigs for lightning-fast aerial maneuvers.',
+    x: 24,
+    y: 82,
+    w: 118,
+    dur: '6.2s',
+    del: '-2.6s',
+    svg: (
+      <svg viewBox="0 0 150 60">
+        <defs>
+          <linearGradient id="brH" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#6b4326" />
+            <stop offset="100%" stopColor="#9a6a34" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M6 28 C30 24 62 24 92 26 L92 34 C62 36 30 36 6 34 Z"
+          fill="url(#brH)"
+        />
+        <rect x="90" y="22" width="10" height="16" rx="3" fill="#a32020" />
+        <path
+          d="M100 20 C118 12 136 14 146 22 C138 25 136 29 140 33 C132 40 116 40 100 38 Z"
+          fill="#d8a04a"
+        />
+        <path
+          d="M104 26 L138 21 M104 30 L142 29 M104 34 L136 37"
+          stroke="#b98434"
+          strokeWidth="1.4"
+          opacity="0.8"
+          fill="none"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: 'lightning',
+    title: 'THE CHOSEN MARK',
+    quote: 'The boy who lived.',
+    desc: 'An ancient rune of courage, destiny, and indestructible magical protection.',
+    x: 74,
+    y: 82,
+    w: 58,
+    dur: '6.8s',
+    del: '-2s',
+    svg: (
+      <svg viewBox="0 0 60 100">
+        <defs>
+          <linearGradient id="ltG" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffe9a8" />
+            <stop offset="100%" stopColor="#d8912a" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M36 2 L10 54 H28 L20 98 L50 40 H31 Z"
+          fill="url(#ltG)"
+          stroke="#8a5a12"
+          strokeWidth="1.5"
+        />
+      </svg>
+    ),
+  },
 ];
 
 function FloatingItem({ obj }) {
   const [isActive, setIsActive] = useState(false);
+  const [showLore, setShowLore] = useState(false);
   const finRef = useRef(null);
   const lastSparkRef = useRef(0);
   const touchTimerRef = useRef(null);
+  const autoCloseTimerRef = useRef(null);
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -269,6 +289,18 @@ function FloatingItem({ obj }) {
     }
   };
 
+  const handleClick = (e) => {
+    e.stopPropagation();
+    setShowLore((prev) => !prev);
+    const r = e.currentTarget.getBoundingClientRect();
+    spawnSparks(r.left + r.width / 2, r.top + r.height / 2, '#f0d089', 18);
+
+    clearTimeout(autoCloseTimerRef.current);
+    autoCloseTimerRef.current = setTimeout(() => {
+      setShowLore(false);
+    }, 6000);
+  };
+
   const handleTouchStart = (e) => {
     setIsActive(true);
     const t = e.touches[0];
@@ -277,14 +309,22 @@ function FloatingItem({ obj }) {
     touchTimerRef.current = setTimeout(() => setIsActive(false), 1200);
   };
 
+  // Determine popup placement class based on coordinates
+  const vAlign = obj.y < 34 ? 'pop-below' : 'pop-above';
+  const hAlign = obj.x < 25 ? 'align-left' : obj.x > 75 ? 'align-right' : 'align-center';
+
   return (
     <div
-      className={`fobj ${isActive ? 'active' : ''}`}
+      className={`fobj ${isActive ? 'active' : ''} ${showLore ? 'selected' : ''}`}
       style={{ left: `${obj.x}%`, top: `${obj.y}%` }}
       onPointerEnter={() => setIsActive(true)}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       onTouchStart={handleTouchStart}
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      aria-label={`Inspect ${obj.title}`}
     >
       <div
         className="bob"
@@ -298,6 +338,31 @@ function FloatingItem({ obj }) {
           {obj.svg}
         </div>
       </div>
+
+      {showLore && (
+        <div
+          className={`fobj-lore-popup ${vAlign} ${hAlign}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="fobj-lore-head">
+            <span className="star">✦</span>
+            <h5>{obj.title}</h5>
+            <span className="star">✦</span>
+          </div>
+          <p className="fobj-lore-quote">“{obj.quote}”</p>
+          <p className="fobj-lore-desc">{obj.desc}</p>
+          <button
+            className="fobj-lore-close"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowLore(false);
+            }}
+            aria-label="Close lore popup"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

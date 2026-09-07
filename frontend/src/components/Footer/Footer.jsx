@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { spawnSparks } from '../../utils/sparks';
 
 export default function Footer() {
-  const [showCredits, setShowCredits] = useState(false);
   const [showToTop, setShowToTop] = useState(false);
   const [embers, setEmbers] = useState([]);
-  const creditsBtnRef = useRef(null);
-  const creditsPopRef = useRef(null);
 
   useEffect(() => {
     // Generate 16 rising dust embers
@@ -26,23 +23,9 @@ export default function Footer() {
       setShowToTop(window.scrollY > 600);
     };
 
-    const handleClickOutside = (e) => {
-      if (
-        creditsPopRef.current &&
-        !creditsPopRef.current.contains(e.target) &&
-        creditsBtnRef.current &&
-        !creditsBtnRef.current.contains(e.target)
-      ) {
-        setShowCredits(false);
-      }
-    };
-
     window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('click', handleClickOutside);
-
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('click', handleClickOutside);
     };
   }, []);
 
@@ -52,7 +35,7 @@ export default function Footer() {
   };
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -88,61 +71,43 @@ export default function Footer() {
         </div>
 
         <div className="foot-grid">
+          {/* Column 1: Brand & Identity */}
           <div className="f-brand reveal">
-            <svg className="emblem" viewBox="0 0 60 60" aria-hidden="true">
-              <defs>
-                <linearGradient id="emG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f8e2a6" />
-                  <stop offset="1%" stopColor="#b9862a" />
-                </linearGradient>
-              </defs>
-              <circle
-                cx="30"
-                cy="30"
-                r="27"
-                fill="none"
-                stroke="url(#emG)"
-                strokeWidth="1.6"
-              />
-              <path
-                d="M33 12 L20 34 h9 L25 48 L40 26 h-9 Z"
-                fill="url(#emG)"
-              />
-              <path
-                d="M4 30 C10 22 16 22 20 27 M56 30 C50 22 44 22 40 27"
-                stroke="url(#emG)"
-                strokeWidth="1.6"
-                fill="none"
-              />
-            </svg>
-            <p className="f-name"> EGT 2.0</p>
-            <p className="f-ed">WIZARDING EDITION</p>
+            <img
+              src="/assets/logo.png"
+              alt="Alexa Developers CU Logo"
+              className="footer-logo-img"
+            />
+            <p className="f-name">ALEXA DEVELOPERS CU</p>
+            <p className="f-ed">EGT 2.0 · WIZARDING EDITION</p>
             <p className="f-desc">
-              Where ideas become magic — a tournament of builders, dreamers and
-              makers.
+              Where ideas transform into magic. The premier student developer community driving technical innovation, buildathons, and tournaments at Chandigarh University.
             </p>
           </div>
 
+          {/* Column 2: Navigation */}
           <nav className="f-col reveal" aria-label="Footer Navigation">
-            <h4>NAVIGATE</h4>
+            <h4>EXPLORE</h4>
             <div className="f-nav">
-              <a href="#hero">HOME</a>
-              <a href="#exams">EXAMS</a>
-              <a href="#buildathon">BUILDATHON</a>
-              <a href="mailto:community@egt2.0.in">CONTACT US</a>
+              <a href="#hero">THE DUEL</a>
+              <a href="#exams">O.W.L. EXAMS</a>
+              <a href="#buildathon">THE GRAND HALL</a>
             </div>
           </nav>
 
+          {/* Column 3: Socials & Connect */}
           <div className="f-col f-right reveal">
-            <h4>OWL POST</h4>
+            <h4>OWL POST &amp; SOCIAL</h4>
             <div className="socials">
+              {/* Instagram */}
               <a
                 className="soc"
-                href="https://instagram.com"
+                href="https://www.instagram.com/alexadev.cu"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Instagram"
-                onPointerEnter={handleSocialHover}
+                aria-label="Instagram @alexadev.cu"
+                title="Instagram"
+                onPointerEnter={(e) => handleSocialHover(e, '#e1306c')}
               >
                 <svg viewBox="0 0 24 24">
                   <rect x="3" y="3" width="18" height="18" rx="5" />
@@ -156,78 +121,96 @@ export default function Footer() {
                   />
                 </svg>
               </a>
+
+              {/* LinkedIn */}
               <a
                 className="soc"
-                href="https://linkedin.com"
+                href="https://www.linkedin.com/company/alexadevscu/"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="LinkedIn"
-                onPointerEnter={handleSocialHover}
+                aria-label="LinkedIn Alexa Developers CU"
+                title="LinkedIn"
+                onPointerEnter={(e) => handleSocialHover(e, '#0077b5')}
               >
                 <svg viewBox="0 0 24 24">
                   <path d="M4.5 9.5v11M4.5 4.6v.1M10 20.5v-7c0-2.2 1.6-4 3.9-4s4.1 1.8 4.1 4v7" />
                 </svg>
               </a>
+
+              {/* WhatsApp */}
               <a
                 className="soc"
-                href="https://wa.me/917533811283"
+                href="https://chat.whatsapp.com/GQScMwZ7X6EKAjfqAFkz4q"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="WhatsApp"
-                onPointerEnter={handleSocialHover}
+                aria-label="WhatsApp Community"
+                title="WhatsApp Community"
+                onPointerEnter={(e) => handleSocialHover(e, '#25d366')}
               >
                 <svg viewBox="0 0 24 24">
                   <path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Z" />
                   <path d="M8.8 8.8c-.3.3-.4 1 0 1.9.6 1.4 1.9 2.9 3.9 3.9 1 .5 1.8.5 2.2.2l.8-1-1.9-1.2-.8.7c-1-.5-1.9-1.4-2.4-2.4l.7-.8-1.2-1.9Z" />
                 </svg>
               </a>
+
+              {/* Official Website */}
+              <a
+                className="soc"
+                href="https://alexa-developers-at-cu.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Alexa Developers CU Official Website"
+                title="Official Website"
+                onPointerEnter={(e) => handleSocialHover(e, '#f0d089')}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                </svg>
+              </a>
             </div>
-            <a className="contact-btn" href="mailto:community@egt2.0.in">
-              CONTACT US
+
+            <a
+              className="contact-btn"
+              href="https://alexa-developers-at-cu.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              VISIT OFFICIAL PORTAL ↗
             </a>
           </div>
 
+          {/* Column 4: Community & Organization */}
           <div className="f-col f-community reveal">
             <h4 className="it">COMMUNITY</h4>
             <p>
-              <b>EGT 2.0</b>
+              <b>Alexa Developers CU</b>
               <br />
-              Community Manager · +91 75338 11283
+              Chandigarh University · Punjab
               <br />
-              <span className="mm">“Mischief Managed”</span> 🪄
+              <a
+                href="https://chat.whatsapp.com/GQScMwZ7X6EKAjfqAFkz4q"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--gold-bright)', textDecoration: 'underline' }}
+              >
+                Join WhatsApp Network ↗
+              </a>
+              <br />
+              <span className="mm">“Mischief Managed · Build With Magic”</span>
             </p>
           </div>
         </div>
 
         <div className="foot-end">
-          <p className="fe-name"> EGT 2.0</p>
-          <p className="fe-ed">· WIZARDING EDITION ·</p>
-          <p className="fe-magic">Made with magic &amp; code.</p>
+          <p className="fe-name">ALEXA DEVELOPERS CU</p>
+          <p className="fe-ed">· EGT 2.0 · WIZARDING EDITION ·</p>
+          <p className="fe-magic">Crafted with magic, code &amp; innovation.</p>
         </div>
 
         <div className="foot-bottom">
-          <p>© 2026 EGT 2.0 · ALL ENCHANTMENTS RESERVED</p>
-          <button
-            id="creditsBtn"
-            ref={creditsBtnRef}
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowCredits((prev) => !prev);
-            }}
-          >
-            CREDITS ✦
-          </button>
+          <p>© 2026 Alexa Developers CU · EGT 2.0 · ALL ENCHANTMENTS RESERVED</p>
         </div>
-      </div>
-
-      <div
-        id="creditsPop"
-        ref={creditsPopRef}
-        className={showCredits ? 'show' : ''}
-      >
-        A fan-made concept crafted for the  EGT 2.0.
-        Wizarding motifs inspired by the world of Harry Potter. Built with ✦ by
-        the GeeksforGeeks CII community.
       </div>
 
       <button

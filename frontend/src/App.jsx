@@ -49,7 +49,7 @@ export default function App() {
   const scrollToExams = () => {
     const el = document.getElementById('exams');
     if (el) {
-      el.scrollIntoView({ behavior: 'auto' });
+      el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 

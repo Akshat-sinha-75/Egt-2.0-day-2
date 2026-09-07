@@ -848,13 +848,25 @@ export default function HeroDuel({ onScrollToExams }) {
       <div className="fog fog-b" ref={fogBRef}></div>
 
       <div className="hero-head">
-        <p className="kicker">THE WIZARDING WORLD PRESENTS</p>
+        <div className="hero-adc-badge">
+          <img src="/assets/logo.png" alt="Alexa Developers CU" className="adc-logo-icon" />
+          <span className="adc-badge-text">ALEXA DEVELOPERS CU PRESENTS</span>
+        </div>
+
+        <p className="kicker">THE ANNUAL WIZARDING TOURNAMENT</p>
+
         <h1 className="hero-title">
           <span className="tw">HARRY</span> <span className="tg">POTTER</span>
         </h1>
-        <p className="hero-sub">
-          <span className="bolt">⚡</span>&nbsp; EGT 2.0 · WIZARDING EDITION &nbsp;
-          <span className="bolt">⚡</span>
+
+        <div className="hero-edition-pill">
+          <span className="star-dot">✦</span>
+          <span className="edition-text">EGT 2.0 · WIZARDING EDITION</span>
+          <span className="star-dot">✦</span>
+        </div>
+
+        <p className="hero-desc-line">
+          Where Code Meets Magic — Solve Enigmas, Clear Checkpoints &amp; Conquer The Great Duel
         </p>
       </div>
 
@@ -945,7 +957,9 @@ export default function HeroDuel({ onScrollToExams }) {
         aria-label="Scroll to the examination"
       >
         <span>SCROLL</span>
-        <i>↓</i>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M7 10l5 5 5-5" />
+        </svg>
       </button>
 
       <div id="flash" ref={flashRef}></div>

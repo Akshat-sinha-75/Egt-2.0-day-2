@@ -1,4 +1,7 @@
 require('dotenv').config();
+if (typeof WebSocket === 'undefined') {
+  global.WebSocket = require('ws');
+}
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
