@@ -306,7 +306,7 @@ app.post('/api/admin/reset', authenticateAdmin, async (req, res) => {
   await supabase.from('submissions').delete().neq('team_id', 'none');
 
   // 3. Reset all Round 2 assignments and progress logs
-  await supabase.from('round2_team_assignments').update({ current_step: 0, state: 'TRANSIT', current_question_id: null }).neq('team_id', 'none');
+  await supabase.from('round2_team_assignments').update({ current_step: 0, state: 'PENDING_SOLVE', current_question_id: null }).neq('team_id', 'none');
   await supabase.from('round2_progress').delete().neq('team_id', 'none');
 
   res.json({ message: 'Round 1 and all submissions have been reset.' });
@@ -350,14 +350,14 @@ app.get('/api/admin/round2/status', authenticateAdmin, async (req, res) => {
 app.post('/api/admin/round2/reset', authenticateAdmin, async (req, res) => {
   const { error: resetError } = await supabase
     .from('round2_team_assignments')
-    .update({ current_step: 0, state: 'TRANSIT', current_question_id: null })
+    .update({ current_step: 0, state: 'PENDING_SOLVE', current_question_id: null })
     .neq('team_id', 'none'); // Update all
 
   if (resetError) return res.status(500).json({ error: resetError.message });
 
   await supabase.from('round2_progress').delete().neq('team_id', 'none');
 
-  res.json({ message: 'Round 2 has been reset to starting state (TRANSIT to Checkpoint 1).' });
+  res.json({ message: 'Round 2 has been reset to starting state (Initial Cipher Riddle).' });
 });
 // ------------------------------------------------------------------
 // ROUND 2 APIs

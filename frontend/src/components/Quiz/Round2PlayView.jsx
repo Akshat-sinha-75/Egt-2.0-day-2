@@ -125,17 +125,10 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
       }
 
       if (data.state === 'PENDING_SOLVE') {
-        const isScanVerified = sessionStorage.getItem('r2_scan_verified_' + data.currentStep) === 'true';
-        if (isScanVerified) {
-          setQuestionText(data.question);
-          setUiState('solving');
-        } else {
-          // Has not physically scanned QR at this checkpoint yet — show Sprint Radar to destination!
-          setNextDest(data.arrivedDestination || data.nextDestination || data.currentDestination || `Checkpoint ${data.currentStep + 1}`);
-          setUiState('transit');
-        }
+        setQuestionText(data.question || 'Decipher the starting cipher to unlock your first checkpoint.');
+        setUiState('solving');
       } else if (data.state === 'TRANSIT') {
-        setNextDest(data.nextDestination);
+        setNextDest(data.nextDestination || 'Next Checkpoint');
         setUiState('transit');
       } else if (data.state === 'COMPLETE') {
         setUiState('complete');

@@ -2459,3 +2459,230 @@ input::placeholder {
   color: #04060d;
   box-shadow: 0 0 14px #48e28f;
 }
+
+/* =========================================================================
+   ROUND 1 PROCTORING & ANTI-CHEAT WARNING SYSTEM
+   ========================================================================= */
+
+/* Top bar proctor status pill */
+.r1-proctor-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  font-family: var(--quiz-font-display);
+  font-size: 11.5px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  border-radius: 999px;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.r1-proctor-pill.safe {
+  background: rgba(72, 226, 143, 0.08);
+  border: 1px solid rgba(72, 226, 143, 0.35);
+  color: #a7f3d0;
+}
+
+.r1-proctor-pill.warn {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  color: #fde68a;
+  animation: proctorPulseWarn 2s infinite ease-in-out;
+}
+
+.r1-proctor-pill.danger {
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.8);
+  color: #fca5a5;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+  animation: proctorPulseDanger 1.2s infinite ease-in-out;
+}
+
+@keyframes proctorPulseWarn {
+  0%, 100% { box-shadow: 0 0 0 rgba(245, 158, 11, 0); }
+  50% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.45); }
+}
+
+@keyframes proctorPulseDanger {
+  0%, 100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+  50% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.6); }
+}
+
+/* Proctor & Device Modal Overlay */
+.proctor-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(4, 6, 13, 0.92);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+.proctor-modal-card {
+  position: relative;
+  background: linear-gradient(180deg, #10142b 0%, #080b18 100%);
+  border: 1.5px solid rgba(229, 190, 104, 0.4);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(229, 190, 104, 0.15);
+  border-radius: 12px;
+  padding: 2.5rem 2.2rem;
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
+}
+
+.proctor-modal-card.final-warning {
+  border-color: #f59e0b;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95), 0 0 40px rgba(245, 158, 11, 0.3);
+}
+
+.proctor-modal-card.locked {
+  border-color: #ef4444;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.95), 0 0 50px rgba(239, 68, 68, 0.4);
+}
+
+.proctor-icon-banner {
+  font-size: 3rem;
+  margin-bottom: 0.8rem;
+  filter: drop-shadow(0 0 16px rgba(229, 190, 104, 0.5));
+}
+
+.proctor-modal-title {
+  font-family: var(--quiz-font-display);
+  font-size: clamp(1.25rem, 2.2vw, 1.55rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--quiz-warm);
+  margin-bottom: 0.4rem;
+}
+
+.proctor-modal-card.final-warning .proctor-modal-title {
+  color: #fbbf24;
+}
+
+.proctor-modal-card.locked .proctor-modal-title {
+  color: #ff6b6b;
+}
+
+.proctor-modal-sub {
+  font-family: var(--quiz-font-display);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--quiz-gold);
+  margin-bottom: 1.4rem;
+  text-transform: uppercase;
+}
+
+.proctor-modal-desc {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+/* 3-Strike Meter Row */
+.strike-meter-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 1.4rem;
+}
+
+.strike-pip {
+  padding: 6px 14px;
+  font-family: var(--quiz-font-display);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #888;
+  transition: all 0.3s ease;
+}
+
+.strike-pip.active {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+  color: #fbbf24;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+.strike-pip.active.danger {
+  background: rgba(249, 115, 22, 0.2);
+  border-color: #f97316;
+  color: #fdba74;
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.4);
+}
+
+.strike-pip.active.locked {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #fca5a5;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.5);
+}
+
+/* Policy disclaimer box inside modal */
+.proctor-policy-box,
+.proctor-notice-body {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 1.1rem 1.3rem;
+  text-align: left;
+  margin-bottom: 1.6rem;
+  font-size: 0.92rem;
+  color: #cbd5e1;
+}
+
+.proctor-policy-box strong {
+  display: block;
+  font-family: var(--quiz-font-display);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--quiz-gold);
+  margin-bottom: 0.6rem;
+}
+
+.proctor-policy-box ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.5;
+}
+
+.proctor-policy-box li {
+  margin-bottom: 0.35rem;
+}
+
+.proctor-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+/* Action Buttons */
+.btn-danger-proctor {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  color: #ffffff;
+  border: 1px solid #f87171;
+  border-radius: 6px;
+  font-family: var(--quiz-font-display);
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 18px rgba(239, 68, 68, 0.4);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.btn-danger-proctor:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 6px 24px rgba(239, 68, 68, 0.6);
+  transform: translateY(-1px);
+}
+
