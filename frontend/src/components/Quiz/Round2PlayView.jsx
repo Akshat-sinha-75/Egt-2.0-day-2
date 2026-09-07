@@ -8,7 +8,7 @@ function getMotivationalPush(remainingSteps, currentStep, totalSteps = 7) {
   if (currentStep === 0) {
     return {
       theme: 'normal',
-      pill: '🏃 FIRST STRETCH • THE RACE IS ON',
+      pill: 'FIRST STRETCH • THE RACE IS ON',
       headline: 'FIRST DESTINATION UNLOCKED! SPRINT!',
       subtext: 'The tournament clock has started! Sprint to your first checkpoint on campus and scan the QR code to check in!'
     };
@@ -16,7 +16,7 @@ function getMotivationalPush(remainingSteps, currentStep, totalSteps = 7) {
   if (remainingSteps === 1) {
     return {
       theme: 'climax',
-      pill: '🔥 FINAL SPRINT • THE FINAL AWAITS',
+      pill: 'FINAL SPRINT • THE FINAL AWAITS',
       headline: 'SPRINT TO THE FINAL! EGT 2.0 IS YOURS TO WIN!',
       subtext: 'This is the ultimate showdown! You have conquered all previous trials. Sprint to the Final checkpoint QR code right now and claim victory!'
     };
@@ -24,7 +24,7 @@ function getMotivationalPush(remainingSteps, currentStep, totalSteps = 7) {
   if (remainingSteps === 2) {
     return {
       theme: 'penultimate',
-      pill: '⚡ PENULTIMATE LAP • 2 CHECKPOINTS TO GLORY',
+      pill: 'PENULTIMATE LAP • 2 CHECKPOINTS TO GLORY',
       headline: 'JUST 2 MORE AND EGT IS YOURS!',
       subtext: 'Feel the adrenaline surging! You are in the elite championship pack now. Keep pushing — do not slow down for a second!'
     };
@@ -32,7 +32,7 @@ function getMotivationalPush(remainingSteps, currentStep, totalSteps = 7) {
   if (remainingSteps === 3) {
     return {
       theme: 'fast',
-      pill: '🚀 BLAZING PACE • STAY AGGRESSIVE',
+      pill: 'BLAZING PACE • STAY AGGRESSIVE',
       headline: 'YES, KEEP GOING! MAYBE YOU ARE THE FIRST SOLVING SO FAST!',
       subtext: 'Your squad is blitzing through the map at record speed! Maintain this momentum and leave every rival behind!'
     };
@@ -40,14 +40,14 @@ function getMotivationalPush(remainingSteps, currentStep, totalSteps = 7) {
   if (remainingSteps === 4) {
     return {
       theme: 'fast',
-      pill: '✨ OVER HALFWAY • UNSTOPPABLE RUN',
+      pill: 'OVER HALFWAY • UNSTOPPABLE RUN',
       headline: 'HALFWAY POINT SMASHED! CHARGE FORWARD!',
       subtext: 'Checkpoints are falling in record time. Stay sharp, communicate fast, and conquer the next marker!'
     };
   }
   return {
     theme: 'normal',
-    pill: '🏃 CHECKPOINT CLEARED • SPEED IS EVERYTHING',
+    pill: 'CHECKPOINT CLEARED • SPEED IS EVERYTHING',
     headline: 'SMOOTH SOLVE! SPRINT TO THE NEXT TARGET!',
     subtext: 'Every second counts on the leaderboard. Keep your eyes sharp and legs moving towards your next stop!'
   };
@@ -59,6 +59,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
   const [questionText, setQuestionText] = useState('');
   const [answerInput, setAnswerInput] = useState('');
   const [nextDest, setNextDest] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [stepInfo, setStepInfo] = useState({
     currentStep: 0,
@@ -92,7 +93,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
     }
   };
 
-  const fetchCurrentState = async () => {
+  const fetchCurrentState = async (retries = 2) => {
     setUiState('loading');
     try {
       const res = await fetch(`${API_BASE_URL}/round2/current`, {
@@ -124,8 +125,15 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
       }
 
       if (data.state === 'PENDING_SOLVE') {
-        setQuestionText(data.question);
-        setUiState('solving');
+        const isScanVerified = sessionStorage.getItem('r2_scan_verified_' + data.currentStep) === 'true';
+        if (isScanVerified) {
+          setQuestionText(data.question);
+          setUiState('solving');
+        } else {
+          // Has not physically scanned QR at this checkpoint yet — show Sprint Radar to destination!
+          setNextDest(data.arrivedDestination || data.nextDestination || data.currentDestination || `Checkpoint ${data.currentStep + 1}`);
+          setUiState('transit');
+        }
       } else if (data.state === 'TRANSIT') {
         setNextDest(data.nextDestination);
         setUiState('transit');
@@ -133,16 +141,20 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
         setUiState('complete');
       }
     } catch (err) {
-      setErrorMessage(err.message);
+      if (retries > 0) {
+        setTimeout(() => fetchCurrentState(retries - 1), 1800);
+        return;
+      }
+      setErrorMessage(err.message || 'Connecting to vault server...');
       setUiState('error');
     }
   };
 
   const handleSubmitAnswer = async (e) => {
     e.preventDefault();
-    if (!answerInput.trim()) return;
+    if (!answerInput.trim() || isSubmitting) return;
     
-    setUiState('loading');
+    setIsSubmitting(true);
     try {
       const res = await fetch(`${API_BASE_URL}/round2/submit`, {
         method: 'POST',
@@ -155,6 +167,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
       const data = await res.json();
       
       if (!res.ok) {
+        setIsSubmitting(false);
         if (res.status === 401) {
           localStorage.removeItem('R2_Token');
           sessionStorage.removeItem('egt2_wizarding_hunt_v2');
@@ -180,11 +193,14 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
       }
 
       // Success!
+      setIsSubmitting(false);
       spawnSparks(window.innerWidth / 2, window.innerHeight / 2, '#43e08a', 35);
       setAnswerInput('');
 
+      // Clear scan verification for this solved step so next step requires a fresh physical QR scan
+      sessionStorage.removeItem('r2_scan_verified_' + stepInfo.currentStep);
+
       if (data.state === 'COMPLETE') {
-        // Final riddle solved — auto-complete, sprint to fountain!
         if (data.currentStep !== undefined) {
           setStepInfo(prev => ({
             ...prev,
@@ -202,52 +218,91 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
         if (onTriggerToast) onTriggerToast(' CORRECT! SPRINT TO NEXT DESTINATION! ');
       }
     } catch (err) {
+      setIsSubmitting(false);
       if (onTriggerToast) onTriggerToast(` ERROR: ${err.message} `);
       setUiState('solving');
     }
   };
 
-  const pushMessage = getMotivationalPush(stepInfo.remainingSteps, stepInfo.stepNumber, stepInfo.totalSteps);
+  const pushMessage = getMotivationalPush(stepInfo?.remainingSteps ?? 7, stepInfo?.stepNumber ?? 0, stepInfo?.totalSteps ?? 7) || {
+    theme: 'normal',
+    pill: 'EXPEDITION TRIAL • STAY SHARP',
+    headline: 'SPRINT TO THE NEXT MARKER!',
+    subtext: 'Conquer the riddle and sprint across campus to log your arrival!'
+  };
 
-  // 8 nodes: INITIAL + CP1-CP6 + FINAL
-  const totalNodes = (stepInfo.totalSteps || 7) + 1;
+  // Total nodes safe calculation
+  const totalSteps = Math.max(1, Number(stepInfo?.totalSteps) || 7);
+  const totalNodes = totalSteps + 1;
   const nodes = Array.from({ length: totalNodes }, (_, idx) => idx);
-  const activeIdx = Math.min(stepInfo.currentStep, totalNodes - 1);
-  const fillPercentage = (activeIdx / (totalNodes - 1)) * 100;
+  const activeIdx = Math.min(Math.max(0, Number(stepInfo?.currentStep) || 0), totalNodes - 1);
+  const fillPercentage = totalNodes > 1 ? (activeIdx / (totalNodes - 1)) * 100 : 0;
 
   return (
-    <section className="r2-page-wrap">
+    <section className="r2-page-wrap" aria-label="Round 2 Checkpoint Trial">
       <div className="r2-ambient-glow"></div>
       <div className="r2-stars-overlay"></div>
 
-      <div className="r2-main-card">
+      {/* Top Header Navigation Bar */}
+      <header className="quiz-top-bar" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50 }}>
+        <div className="quiz-top-inner">
+          <div className="quiz-brand">
+            <span className="brand-title">ROUND 2 · THE MARAUDER’S EXPEDITION</span>
+            <small className="brand-sub">CAMPUS-WIDE PHYSICAL CHECKPOINT HUNT</small>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div
+              className="quiz-who-pill"
+              title={`${participant?.name || 'Seeker'} · ${participant?.teamId || 'TEAM'}`}
+            >
+              <span className="star-dot" style={{ color: '#48e28f' }}>✦</span>
+              <b>{participant?.name || 'Seeker'}</b>
+              <span className="sep">·</span>
+              <span style={{ color: '#48e28f' }}>{participant?.teamId || 'TEAM'}</span>
+            </div>
+
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={onBackToHall}
+              style={{ fontSize: '11px', padding: '6px 14px' }}
+            >
+              ← GREAT HALL
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Container Card */}
+      <div className="r2-main-card" style={{ marginTop: '72px' }}>
         
         {uiState === 'loading' && (
           <div className="r2-scanner-wrap">
             <div className="r2-radar-ring"></div>
             <p className="r2-scanner-text">Consulting the Marauder's Map...</p>
-            <p className="r2-scanner-sub">Locating current coordinates...</p>
+            <p className="r2-scanner-sub">Attuning to the campus enchantments...</p>
           </div>
         )}
 
         {uiState === 'expired' && (
           <div className="r2-error-box">
-            <div className="r2-error-icon">🔒</div>
+            <div className="r2-error-icon" style={{ color: '#f0d089', fontSize: '32px' }}>✦</div>
             <h3 className="r2-error-title" style={{ color: '#f0d089' }}>SESSION EXPIRED</h3>
             <p className="r2-error-msg">{errorMessage}</p>
             <button className="r2-btn-gold" style={{ width: '100%', maxWidth: '300px', margin: '0 auto' }} onClick={handleRelogin}>
-              🔑 LOG IN TO CONTINUE
+              LOG IN TO CONTINUE ✦
             </button>
           </div>
         )}
 
         {uiState === 'error' && (
           <div className="r2-error-box">
-            <div className="r2-error-icon">⚠️</div>
+            <div className="r2-error-icon" style={{ color: '#ef4444', fontSize: '32px' }}>✦</div>
             <h3 className="r2-error-title">COORDINATES UNREACHABLE</h3>
             <p className="r2-error-msg">{errorMessage}</p>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '1rem' }}>
-              <button className="r2-btn-ghost" onClick={fetchCurrentState}>RETRY</button>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
+              <button className="r2-btn-gold" onClick={() => fetchCurrentState(2)}>RETRY SIGNAL ↻</button>
               <button className="r2-btn-ghost" onClick={handleRelogin}>LOG IN</button>
             </div>
           </div>
@@ -258,7 +313,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
           <div className="r2-roadmap">
             <div className="r2-roadmap-top">
               <span className="r2-roadmap-status">
-                <span>⚡</span>
+                <span className="star-dot">✦</span>
                 {uiState === 'complete' 
                   ? `ALL ${stepInfo.totalSteps - 1} CHECKPOINTS CLEARED!` 
                   : stepInfo.currentStep === 0
@@ -267,9 +322,9 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
               </span>
               <span className="r2-roadmap-remaining">
                 {uiState === 'complete'
-                  ? '🏆 CHAMPION'
+                  ? '✦ CHAMPION ✦'
                   : stepInfo.remainingSteps === 1
-                  ? '🔥 FINAL NEXT!'
+                  ? '✦ FINAL SPRINT NEXT ✦'
                   : `${stepInfo.remainingSteps} to Final`}
               </span>
             </div>
@@ -283,7 +338,6 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
               </div>
 
               {nodes.map((idx) => {
-                // INITIAL = idx 0, CP1-CP6 = idx 1-6, FINAL = idx 7
                 const isFinal = idx === totalNodes - 1;
                 const isDone = uiState === 'complete' || idx < stepInfo.currentStep;
                 const isActive = uiState !== 'complete' && idx === stepInfo.currentStep;
@@ -296,10 +350,10 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
                 return (
                   <div key={idx} className="r2-node-wrapper">
                     <div className={nodeClass}>
-                      {isDone ? '✓' : isFinal ? '🏆' : idx === 0 ? '⚡' : idx}
+                      {isDone ? '✓' : isFinal ? '🏆' : idx === 0 ? '✦' : idx}
                     </div>
                     <span className={`r2-node-label ${isActive ? 'active-label' : ''}`}>
-                      {isFinal ? 'FINAL' : idx === 0 ? 'INITIAL' : `CP ${idx}`}
+                      {isFinal ? 'VAULT' : idx === 0 ? 'START' : `CP ${idx}`}
                     </span>
                   </div>
                 );
@@ -319,42 +373,68 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
           </div>
         )}
 
+        {/* SOLVING STATE: ENCHANTED RIDDLE SCROLL */}
         {uiState === 'solving' && (
           <div className="r2-riddle-container">
             <div className="r2-solved-banner">
-              <span>📍</span>
+              <span className="star-dot">✦</span>
               {stepInfo.currentStep === 0
-                ? 'INITIAL TRIAL • STARTING CLUE'
+                ? 'INITIAL TRIAL • CIPHER DISCOVERY'
                 : stepInfo.arrivedDestination || stepInfo.currentDestination
                 ? `ARRIVED AT: ${stepInfo.arrivedDestination || stepInfo.currentDestination}`
                 : `CHECKPOINT ${stepInfo.currentStep} REACHED`}
             </div>
+
             <p className="r2-riddle-intro">
               {stepInfo.currentStep === 0
-                ? 'Decipher this starting riddle to reveal your First Checkpoint on campus:'
-                : 'Checkpoint verified! Decipher the riddle below to unlock your next destination coordinates:'}
+                ? 'Decipher this starting riddle to reveal your First Checkpoint coordinates on campus:'
+                : 'Checkpoint verified! Decipher the riddle below to unlock your next destination:'}
             </p>
             
-            <div className="r2-riddle-parchment">
+            {/* The Parchment Scroll for Question */}
+            <div className="r2-riddle-parchment th-card">
+              <span className="corner tl"></span>
+              <span className="corner tr"></span>
+              <span className="corner bl"></span>
+              <span className="corner br"></span>
+
+              <div className="riddle-header-row">
+                <span className="riddle-badge">✦ KEEPER’S ENIGMA ✦</span>
+                <span className="riddle-step-pill">
+                  {stepInfo.currentStep === 0 ? 'CIPHER 1' : `STATION ${stepInfo.currentStep}`}
+                </span>
+              </div>
+
               <p className="r2-riddle-text">{questionText}</p>
             </div>
 
-            <form onSubmit={handleSubmitAnswer} className="r2-form-group">
-              <input
-                type="text"
-                placeholder="Enter your answer..."
-                value={answerInput}
-                onChange={(e) => setAnswerInput(e.target.value)}
-                className="r2-input"
-                autoFocus
-              />
-              <button type="submit" className="r2-btn-gold" disabled={!answerInput.trim()}>
-                SUBMIT ANSWER ⚡
+            {/* Answer Input Group */}
+            <form onSubmit={handleSubmitAnswer} className="r2-form-group" style={{ marginTop: '1.5rem' }}>
+              <div className="r2-input-wrapper">
+                <label className="r2-input-label">YOUR CIPHER SOLUTION:</label>
+                <input
+                  type="text"
+                  placeholder="Enter the solution keyword..."
+                  value={answerInput}
+                  onChange={(e) => setAnswerInput(e.target.value)}
+                  className="r2-input"
+                  autoFocus
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className="r2-btn-gold" 
+                disabled={!answerInput.trim() || isSubmitting}
+              >
+                {isSubmitting ? 'VERIFYING SPELL…' : 'SUBMIT TRIAL ANSWER ✦'}
               </button>
             </form>
           </div>
         )}
 
+        {/* TRANSIT STATE: SPRINT RADAR */}
         {uiState === 'transit' && (
           <div className="r2-transit-card">
             <div className="r2-transit-badge">
@@ -362,47 +442,46 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
             </div>
 
             <div className="r2-dest-spotlight">
+              <div className="r2-dest-compass-ring">
+                <span className="r2-compass-icon">🧭</span>
+              </div>
+
               <p className="r2-dest-kicker">
                 {stepInfo.currentStep === 0 ? 'SPRINT TO YOUR FIRST CHECKPOINT' : 'RUN IMMEDIATELY TO YOUR NEXT DESTINATION'}
               </p>
               <h2 className="r2-dest-name">{nextDest}</h2>
               <p className="r2-dest-instruction">
-                Sprint to this location on campus right now!
+                Sprint to this campus landmark immediately with your squad!
               </p>
             </div>
 
             <div className="r2-action-guidance">
-              <span className="r2-guidance-icon">📍</span>
+              <span className="r2-guidance-icon">📷</span>
               <p className="r2-guidance-text">
-                When you arrive at <strong>{nextDest}</strong>, search for the hidden tournament QR code and scan it with your device camera to log your arrival!
+                When you arrive at <strong>{nextDest}</strong>, search for the hidden tournament QR seal and scan it with your device camera to log your arrival!
               </p>
             </div>
           </div>
         )}
 
+        {/* COMPLETE STATE: CHAMPION'S VICTORY */}
         {uiState === 'complete' && (
           <div className="r2-complete-card">
             <div className="r2-trophy-aura">🏆</div>
             <h2 className="r2-complete-title">ALL RIDDLES SOLVED!</h2>
-            <p className="r2-complete-sub" style={{ color: '#ffd700', fontSize: '1.1rem', fontWeight: 800 }}>
-              🏃 SPRINT TO THE FOUNTAIN RIGHT NOW!
+            <p className="r2-complete-sub" style={{ color: '#ffd700', fontSize: '1.2rem', fontWeight: 800, letterSpacing: '0.04em' }}>
+              ✦ SPRINT TO THE FOUNTAIN RIGHT NOW ✦
             </p>
             <p className="r2-complete-desc">
-              You have conquered all 6 checkpoints and solved every riddle!
-              The race is yours — run to the Fountain as fast as you can to claim victory!
-              Report your time to the tournament marshals on arrival.
+              You have conquered all checkpoints and solved every keeper's riddle!
+              The championship race is yours — sprint to the Fountain as fast as you can to claim victory!
+              Report your arrival to the tournament marshals at the finish line.
             </p>
             <button className="r2-btn-gold" onClick={onBackToHall}>RETURN TO GREAT HALL</button>
           </div>
         )}
 
       </div>
-      
-      {uiState !== 'complete' && (
-        <button type="button" className="r2-btn-ghost" style={{ marginTop: '2rem' }} onClick={onBackToHall}>
-          ← EXIT TO GREAT HALL
-        </button>
-      )}
     </section>
   );
 }

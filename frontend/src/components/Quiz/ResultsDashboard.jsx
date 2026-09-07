@@ -84,7 +84,7 @@ export default function ResultsDashboard({
           <h1 className="quiz-sec-title center">THE VAULT DASHBOARD</h1>
           <div className="center">
             <span className="part-status-chip">
-              🧙 <b>{participant.name}</b> · {participant.teamId}
+              <span className="star-dot">✦</span> <b>{participant?.name || 'Seeker'}</b> · {participant?.teamId || 'TEAM'}
             </span>
           </div>
         </header>
@@ -99,8 +99,8 @@ export default function ResultsDashboard({
           <div className="sb-grid">
             {/* Left: Big Status Icon */}
             <div className="sb-score-col">
-              <div className="sb-score-number" style={{ fontSize: '3.5rem' }}>
-                {isQualified ? '🏆' : isIncorrect ? '❌' : isExpired ? '⏳' : '📜'}
+              <div className="sb-score-number" style={{ fontSize: '3rem', color: isQualified ? '#43e08a' : '#f0d089' }}>
+                {isQualified ? '✦' : isIncorrect ? '✕' : '✦'}
               </div>
             </div>
 
@@ -110,7 +110,7 @@ export default function ResultsDashboard({
                 {displayMessage}
               </h2>
 
-              <p className="sb-details" style={{ fontSize: '1.2rem', marginTop: '1rem', color: '#ccc' }}>
+              <p className="sb-details" style={{ fontSize: '1.1rem', marginTop: '0.8rem', color: '#ccc' }}>
                 {isQualified && 'Outstanding! You have cracked the code and unlocked the gate.'}
                 {isIncorrect && 'The codeword was incorrect. Please try again if time allows.'}
                 {isExpired && 'Time has expired. The vault is sealed.'}
@@ -122,7 +122,7 @@ export default function ResultsDashboard({
             <div className="sb-right-col">
               <div className={`grade-stamp ${isQualified ? 'pass' : 'fail'}`}>
                 <b className="stamp-letter">{isQualified ? 'O' : 'T'}</b>
-                <span className="stamp-label">{isQualified ? 'OUTSTANDING' : 'TROLL'}</span>
+                <span className="stamp-label">{isQualified ? 'OUTSTANDING' : 'PENDING'}</span>
               </div>
 
               {(!isIncorrect && !isExpired) && (
@@ -187,7 +187,7 @@ export default function ResultsDashboard({
             role="tab"
             aria-selected={true}
           >
-            🏆 TOURNAMENT LEADERBOARD
+            ✦ TOURNAMENT LEADERBOARD
           </button>
         </div>
 
@@ -238,7 +238,7 @@ export default function ResultsDashboard({
                         className={`${team.isCurrentUser ? 'current-user-row' : ''}`}
                       >
                         <td className="rank-cell">
-                          {isTop1 ? '🥇 #1' : isTop2 ? '🥈 #2' : isTop3 ? '🥉 #3' : `#${team.displayRank}`}
+                          {isTop1 ? '#1 ✦' : isTop2 ? '#2' : isTop3 ? '#3' : `#${team.displayRank}`}
                         </td>
                         <td className="name-cell">
                           <b>{team.name}</b>

@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Lenis from 'lenis';
+import 'lenis/dist/lenis.css';
 import './App.css';
 import CursorOrb from './components/CursorOrb';
 import Toast from './components/Toast';
@@ -38,6 +40,61 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Initialize Lenis luxury smooth scrolling for the homepage
+  useEffect(() => {
+    if (currentView !== 'hall') {
+      if (window.lenis) {
+        window.lenis.destroy();
+        window.lenis = null;
+      }
+      return;
+    }
+
+    const lenis = new Lenis({
+      duration: 1.25,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 0.95,
+      touchMultiplier: 1.4,
+      infinite: false,
+    });
+
+    window.lenis = lenis;
+
+    let rafId;
+    function raf(time) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+
+    rafId = requestAnimationFrame(raf);
+
+    // Intercept in-page anchor clicks for buttery smooth scrolling
+    const handleAnchorClick = (e) => {
+      const anchor = e.target.closest('a[href^="#"]');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (href && href.startsWith('#') && !href.startsWith('#/')) {
+        const targetEl = document.querySelector(href);
+        if (targetEl) {
+          e.preventDefault();
+          lenis.scrollTo(targetEl, { offset: 0, duration: 1.35 });
+        }
+      }
+    };
+
+    document.addEventListener('click', handleAnchorClick);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      document.removeEventListener('click', handleAnchorClick);
+      lenis.destroy();
+      window.lenis = null;
+    };
+  }, [currentView]);
+
   const showToast = useCallback((msg) => {
     clearTimeout(toastTimeoutRef.current);
     setToast({ message: msg, isVisible: true });
@@ -47,9 +104,13 @@ export default function App() {
   }, []);
 
   const scrollToExams = () => {
-    const el = document.getElementById('exams');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+    if (window.lenis) {
+      window.lenis.scrollTo('#exams', { offset: 0, duration: 1.35 });
+    } else {
+      const el = document.getElementById('exams');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 

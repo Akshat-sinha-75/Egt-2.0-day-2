@@ -252,7 +252,15 @@ app.post('/api/admin/hints', authenticateAdmin, async (req, res) => {
   const { error } = await supabase.from('question_hints').update({ enabled }).eq('question_id', questionId);
 
   if (error) return res.status(400).json({ error: error.message });
-  res.json({ message: `Hint for ${questionId} set to ${enabled}` });
+  res.json({ message: `Hint for ${questionId} set to ${enabled}`, questionId, enabled });
+});
+
+app.post('/api/admin/hints/bulk', authenticateAdmin, async (req, res) => {
+  const { enabled } = req.body;
+  const { error } = await supabase.from('question_hints').update({ enabled }).neq('question_id', 'none');
+
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ message: `All hints set to ${enabled}`, enabled });
 });
 
 app.post('/api/admin/start', authenticateAdmin, async (req, res) => {
@@ -297,6 +305,10 @@ app.post('/api/admin/reset', authenticateAdmin, async (req, res) => {
   // 2. Delete all submissions to give a clean slate
   await supabase.from('submissions').delete().neq('team_id', 'none');
 
+  // 3. Reset all Round 2 assignments and progress logs
+  await supabase.from('round2_team_assignments').update({ current_step: 0, state: 'TRANSIT', current_question_id: null }).neq('team_id', 'none');
+  await supabase.from('round2_progress').delete().neq('team_id', 'none');
+
   res.json({ message: 'Round 1 and all submissions have been reset.' });
 });
 
@@ -307,6 +319,10 @@ app.get('/api/admin/teams', authenticateAdmin, async (req, res) => {
 
 // Admin: Get Round 2 Status
 app.get('/api/admin/round2/status', authenticateAdmin, async (req, res) => {
+  const { data: dests } = await supabase.from('round2_destinations').select('id, name, qr_identifier');
+  const destMap = {};
+  (dests || []).forEach(d => { destMap[d.id] = d.name; });
+
   const { data: assignments, error } = await supabase
     .from('round2_team_assignments')
     .select('team_id, current_step, state, round2_paths(checkpoints), teams!inner(team_name)')
@@ -316,29 +332,52 @@ app.get('/api/admin/round2/status', authenticateAdmin, async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 
-  res.json(assignments || []);
+  const enriched = (assignments || []).map(a => {
+    const checkpoints = a.round2_paths?.checkpoints || [];
+    const currentDestId = checkpoints[a.current_step] || null;
+    return {
+      ...a,
+      current_dest_id: currentDestId,
+      current_dest_name: currentDestId ? (destMap[currentDestId] || currentDestId) : 'Conquered',
+      destMap
+    };
+  });
+
+  res.json(enriched);
 });
 
 // Admin: Reset Round 2
 app.post('/api/admin/round2/reset', authenticateAdmin, async (req, res) => {
   const { error: resetError } = await supabase
     .from('round2_team_assignments')
-    .update({ current_step: 0, state: 'PENDING_SOLVE', current_question_id: null })
+    .update({ current_step: 0, state: 'TRANSIT', current_question_id: null })
     .neq('team_id', 'none'); // Update all
 
   if (resetError) return res.status(500).json({ error: resetError.message });
 
   await supabase.from('round2_progress').delete().neq('team_id', 'none');
 
-  res.json({ message: 'Round 2 has been reset to starting state.' });
+  res.json({ message: 'Round 2 has been reset to starting state (TRANSIT to Checkpoint 1).' });
 });
 // ------------------------------------------------------------------
 // ROUND 2 APIs
 // ------------------------------------------------------------------
 
-// Get the current Round 2 state for a team
+// Get the current Round 2 state for a team (Gated to QUALIFIED teams only)
 app.get('/api/round2/current', authenticate, async (req, res) => {
   const teamId = req.team.team_id;
+
+  // Verify team qualified from Round 1
+  const { data: sub } = await supabase
+    .from('submissions')
+    .select('status')
+    .eq('team_id', teamId)
+    .eq('status', 'QUALIFIED')
+    .maybeSingle();
+
+  if (!sub) {
+    return res.status(403).json({ error: 'Team has not qualified for Round 2 yet.', qualified: false });
+  }
 
   const { data: assignment, error } = await supabase
     .from('round2_team_assignments')
@@ -357,7 +396,7 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
   if (assignment.state === 'COMPLETE' || currentStep >= checkpoints.length) {
     return res.json({
       state: 'COMPLETE',
-      currentStep: currentStep,
+      currentStep: totalSteps,
       totalSteps: totalSteps,
       stepNumber: totalSteps,
       remainingSteps: 0
@@ -367,7 +406,6 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
   const targetDestId = checkpoints[currentStep];
   const { data: targetDest } = await supabase.from('round2_destinations').select('*').eq('id', targetDestId).single();
 
-  // The checkpoint the team physically arrived at (checkpoints[currentStep - 1]), if they have cleared at least one scan
   let arrivedDestName = null;
   if (currentStep > 0) {
     const arrivedDestId = checkpoints[currentStep - 1];
@@ -388,10 +426,9 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
     });
   }
 
-  // State is PENDING_SOLVE
+  // State is PENDING_SOLVE (only active after QR is physically scanned at this checkpoint)
   let qId = assignment.current_question_id;
   if (!qId) {
-    // Pick a random question for targetDestId
     const { data: questions } = await supabase
       .from('round2_questions')
       .select('id, question_text, difficulty')
@@ -411,9 +448,7 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
         }
       }
       if (!selectedQuestion) selectedQuestion = questions[questions.length - 1];
-
       qId = selectedQuestion.id;
-      // Update assignment
       await supabase.from('round2_team_assignments').update({ current_question_id: qId }).eq('team_id', teamId);
     }
   }
@@ -428,8 +463,8 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
     totalSteps: totalSteps,
     stepNumber: currentStep,
     remainingSteps: totalSteps - currentStep,
-    arrivedDestination: arrivedDestName,
-    currentDestination: arrivedDestName,
+    arrivedDestination: targetDest ? targetDest.name : arrivedDestName,
+    currentDestination: targetDest ? targetDest.name : arrivedDestName,
     nextDestination: targetDest ? targetDest.name : null,
     isInitialStart: currentStep === 0
   });
@@ -438,6 +473,18 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
 app.post('/api/round2/submit', authenticate, async (req, res) => {
   const teamId = req.team.team_id;
   const { answer } = req.body;
+
+  // Verify team qualified from Round 1
+  const { data: sub } = await supabase
+    .from('submissions')
+    .select('status')
+    .eq('team_id', teamId)
+    .eq('status', 'QUALIFIED')
+    .maybeSingle();
+
+  if (!sub) {
+    return res.status(403).json({ error: 'Team has not qualified for Round 2 yet.' });
+  }
 
   const { data: assignment } = await supabase
     .from('round2_team_assignments')
@@ -451,37 +498,34 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
 
   const { data: qData } = await supabase.from('round2_questions').select('*').eq('id', assignment.current_question_id).single();
 
-  if (!qData || qData.correct_answer.toLowerCase() !== answer.trim().toLowerCase()) {
+  const cleanDbAnswer = (qData?.correct_answer || '').trim().toLowerCase();
+  const cleanUserAnswer = (answer || '').trim().toLowerCase();
+
+  if (!qData || cleanDbAnswer !== cleanUserAnswer) {
     return res.status(400).json({ error: 'Incorrect answer. Please try again.' });
   }
 
   const checkpoints = assignment.round2_paths.checkpoints;
   const currentStep = assignment.current_step;
   const totalSteps = checkpoints.length;
-  const targetDestId = checkpoints[currentStep];
-  const { data: dest } = await supabase.from('round2_destinations').select('*').eq('id', targetDestId).single();
+  const currentDestId = checkpoints[currentStep];
+  const { data: currentDest } = await supabase.from('round2_destinations').select('*').eq('id', currentDestId).single();
 
-  const isFinalCheckpoint = currentStep === totalSteps - 1;
+  const nextStep = currentStep + 1;
+  const isFinalCheckpoint = nextStep >= totalSteps;
 
   if (isFinalCheckpoint) {
-    // Last riddle solved — auto-complete. No fountain QR scan needed.
+    // All checkpoints and riddles conquered!
     await supabase.from('round2_team_assignments').update({
       state: 'COMPLETE',
       current_step: totalSteps,
       current_question_id: null
     }).eq('team_id', teamId);
 
-    // Log final progress
-    await supabase.from('round2_progress').insert({
-      team_id: teamId,
-      destination_id: targetDestId,
-      step_no: totalSteps
-    });
-
     return res.json({
       state: 'COMPLETE',
       message: 'All checkpoints conquered! Sprint to the Fountain!',
-      finalDestination: dest ? dest.name : 'Fountain',
+      finalDestination: currentDest ? currentDest.name : 'Fountain',
       currentStep: totalSteps,
       totalSteps: totalSteps,
       stepNumber: totalSteps,
@@ -489,29 +533,26 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
     });
   }
 
-  // Not the final checkpoint — move to TRANSIT
+  // Not the final checkpoint — advance to nextStep and set to TRANSIT
   await supabase.from('round2_team_assignments').update({
+    current_step: nextStep,
     state: 'TRANSIT',
     current_question_id: null
   }).eq('team_id', teamId);
 
-  let arrivedDestName = null;
-  if (currentStep > 0) {
-    const arrivedDestId = checkpoints[currentStep - 1];
-    const { data: arrivedDest } = await supabase.from('round2_destinations').select('name').eq('id', arrivedDestId).single();
-    if (arrivedDest) arrivedDestName = arrivedDest.name;
-  }
+  const nextDestId = checkpoints[nextStep];
+  const { data: nextDest } = await supabase.from('round2_destinations').select('name').eq('id', nextDestId).single();
 
   res.json({
     success: true,
     state: 'TRANSIT',
-    nextDestination: dest ? dest.name : 'Next Checkpoint',
-    currentStep: currentStep,
+    nextDestination: nextDest ? nextDest.name : 'Next Checkpoint',
+    currentStep: nextStep,
     totalSteps: totalSteps,
-    stepNumber: currentStep,
-    remainingSteps: totalSteps - currentStep,
-    arrivedDestination: arrivedDestName,
-    isInitialStart: currentStep === 0
+    stepNumber: nextStep,
+    remainingSteps: totalSteps - nextStep,
+    arrivedDestination: currentDest ? currentDest.name : null,
+    isInitialStart: false
   });
 });
 
@@ -519,6 +560,18 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
 app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
   const teamId = req.team.team_id;
   const { qrCode } = req.body;
+
+  // Verify team qualified from Round 1
+  const { data: sub } = await supabase
+    .from('submissions')
+    .select('status')
+    .eq('team_id', teamId)
+    .eq('status', 'QUALIFIED')
+    .maybeSingle();
+
+  if (!sub) {
+    return res.status(403).json({ error: 'Team has not qualified for Round 2 yet.' });
+  }
 
   const { data: dest } = await supabase.from('round2_destinations').select('*').eq('qr_identifier', qrCode).single();
   if (!dest) {
@@ -535,55 +588,104 @@ app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
     return res.status(400).json({ error: 'Event already completed.' });
   }
 
-  if (assignment.state === 'PENDING_SOLVE') {
-    return res.status(400).json({ error: 'Solve the riddle first before scanning!' });
-  }
-
   const checkpoints = assignment.round2_paths.checkpoints;
   const expectedDestId = checkpoints[assignment.current_step];
 
   if (dest.id !== expectedDestId) {
     const { data: expectedDest } = await supabase.from('round2_destinations').select('name').eq('id', expectedDestId).single();
-    return res.status(400).json({ error: `You have not cleared previous checkpoints. You have to move to ${expectedDest ? expectedDest.name : expectedDestId}.` });
+    const expectedName = expectedDest ? expectedDest.name : `Checkpoint ${assignment.current_step + 1}`;
+    return res.status(400).json({ 
+      error: `WRONG LOCATION! You scanned "${dest.name}", but your squad must sprint to "${expectedName}". No riddle unlocked.` 
+    });
   }
 
-  // Correct destination reached!
-  // Log progress
+  // Pick or retrieve question for this destination
+  let qId = assignment.current_question_id;
+  if (!qId) {
+    const { data: questions } = await supabase
+      .from('round2_questions')
+      .select('id, question_text, difficulty')
+      .eq('destination_id', dest.id);
+
+    if (questions && questions.length > 0) {
+      let selectedQuestion;
+      const rand = Math.random() * 5;
+      let cumulative = 0;
+
+      for (const q of questions) {
+        const weight = q.difficulty === 'EASY' ? 1.5 : 0.875;
+        cumulative += weight;
+        if (rand <= cumulative) {
+          selectedQuestion = q;
+          break;
+        }
+      }
+      if (!selectedQuestion) selectedQuestion = questions[questions.length - 1];
+      qId = selectedQuestion.id;
+    }
+  }
+
+  // Update assignment state to PENDING_SOLVE for this checkpoint
+  await supabase
+    .from('round2_team_assignments')
+    .update({ state: 'PENDING_SOLVE', current_question_id: qId })
+    .eq('team_id', teamId);
+
+  // Log progress scan
   await supabase.from('round2_progress').insert({
     team_id: teamId,
     destination_id: dest.id,
     step_no: assignment.current_step + 1
   });
 
-  const nextStep = assignment.current_step + 1;
-  const isComplete = nextStep >= checkpoints.length;
+  const { data: qData } = qId ? await supabase.from('round2_questions').select('question_text').eq('id', qId).single() : { data: null };
 
-  if (isComplete) {
-    await supabase.from('round2_team_assignments').update({ current_step: nextStep, state: 'COMPLETE' }).eq('team_id', teamId);
-    return res.json({
-      state: 'COMPLETE',
-      message: 'Hunt Completed!',
-      currentStep: nextStep,
-      totalSteps: checkpoints.length,
-      stepNumber: checkpoints.length,
-      remainingSteps: 0
-    });
-  } else {
-    await supabase.from('round2_team_assignments').update({ current_step: nextStep, state: 'PENDING_SOLVE' }).eq('team_id', teamId);
-    return res.json({
-      state: 'PENDING_SOLVE',
-      message: `Arrived at ${dest.name}!`,
-      currentStep: nextStep,
-      totalSteps: checkpoints.length,
-      stepNumber: nextStep,
-      remainingSteps: checkpoints.length - nextStep,
-      arrivedDestination: dest.name,
-      currentDestination: dest.name
-    });
-  }
+  return res.json({
+    state: 'PENDING_SOLVE',
+    message: `Arrived at ${dest.name}! Decipher the riddle to proceed.`,
+    question: qData ? qData.question_text : 'Decipher the cipher keyword for this station.',
+    currentStep: assignment.current_step,
+    totalSteps: checkpoints.length,
+    stepNumber: assignment.current_step,
+    remainingSteps: checkpoints.length - assignment.current_step,
+    arrivedDestination: dest.name,
+    currentDestination: dest.name
+  });
+});
+
+// ------------------------------------------------------------------
+// HEALTH & KEEP-ALIVE (Render Free Tier Anti-Sleep Heartbeat)
+// ------------------------------------------------------------------
+
+app.get(['/api/health', '/health'], (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    service: 'egt-2.0-backend',
+    uptimeSeconds: Math.floor(process.uptime()), 
+    timestamp: new Date().toISOString() 
+  });
 });
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Backend Server running on http://localhost:${PORT}`);
+
+  // Self-Ping Keep-Alive Heartbeat (Every 10 minutes)
+  const selfUrl = process.env.RENDER_EXTERNAL_URL || process.env.BACKEND_URL || 'https://egt-2-0-day-2-backend.onrender.com';
+  if (selfUrl && !selfUrl.includes('localhost')) {
+    const PING_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes (Render sleeps at 15 mins)
+    const pingTarget = `${selfUrl.replace(/\/+$/, '')}/api/health`;
+    console.log(`[Keep-Alive] Initialized self-ping loop -> ${pingTarget} (every 10m)`);
+
+    setInterval(async () => {
+      try {
+        const response = await fetch(pingTarget);
+        if (response.ok) {
+          console.log(`[Keep-Alive] Heartbeat pulse successful at ${new Date().toLocaleTimeString()}`);
+        }
+      } catch (e) {
+        console.warn(`[Keep-Alive] Heartbeat notice:`, e.message);
+      }
+    }, PING_INTERVAL_MS);
+  }
 });

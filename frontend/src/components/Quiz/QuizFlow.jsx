@@ -8,6 +8,7 @@ import Round2CheckpointView from './Round2CheckpointView';
 import {
   loadQuizState,
   saveQuizState,
+  clearQuizState,
 } from './QuizData';
 import { submitCodeApi } from '../../utils/api';
 import './Quiz.css';
@@ -37,35 +38,6 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
     };
   });
 
-  // Sync hash with stage on mount and whenever URL hash changes
-  useEffect(() => {
-    const handleHashChange = () => {
-      const currentHash = window.location.hash.replace(/^#\/?/, '');
-      if (currentHash === 'login') {
-        setQuizState((prev) => ({ ...prev, stage: 'login' }));
-      } else if (currentHash === 'round-1') {
-        setQuizState((prev) => ({ ...prev, stage: 'round-1', result: null }));
-      } else if (currentHash === 'results') {
-        setQuizState((prev) => ({ ...prev, stage: 'results' }));
-      } else if (currentHash === 'round-2-rules') {
-        setQuizState((prev) => ({ ...prev, stage: 'round-2-rules' }));
-      } else if (currentHash === 'round-2') {
-        setQuizState((prev) => ({ ...prev, stage: 'round-2-play' }));
-      } else if (currentHash.startsWith('round2/checkpoint')) {
-        setQuizState((prev) => ({ ...prev, stage: 'round-2-checkpoint' }));
-      }
-    };
-
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
-
-  // Save changes to sessionStorage
-  useEffect(() => {
-    saveQuizState(quizState);
-  }, [quizState]);
-
   // Stage change helper that also updates window hash
   const navigateStage = useCallback((nextStage) => {
     setQuizState((prev) => ({ ...prev, stage: nextStage }));
@@ -75,6 +47,7 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
       results: '#/results',
       'round-2-rules': '#/round-2/rules',
       'round-2-play': '#/round-2',
+      'round-2-checkpoint': '#/round2/checkpoint',
     };
     if (hashMap[nextStage]) {
       window.location.hash = hashMap[nextStage];
@@ -82,7 +55,87 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  // Sync hash with stage on mount and whenever URL hash changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const currentHash = window.location.hash.replace(/^#\/?/, '');
+      if (currentHash === 'login') {
+        setQuizState((prev) => ({ ...prev, stage: 'login' }));
+      } else if (currentHash === 'round-1') {
+        setQuizState((prev) => {
+          // If unauthenticated, redirect to login
+          if (!prev.participant?.token && !localStorage.getItem('R2_Token')) {
+            window.location.hash = '#/login';
+            return { ...prev, stage: 'login' };
+          }
+          return { ...prev, stage: 'round-1', result: null };
+        });
+      } else if (currentHash === 'results') {
+        setQuizState((prev) => ({ ...prev, stage: 'results' }));
+      } else if (currentHash === 'round-2-rules' || currentHash === 'round-2/rules') {
+        setQuizState((prev) => ({ ...prev, stage: 'round-2-rules' }));
+      } else if (currentHash === 'round-2' || currentHash === 'round2') {
+        setQuizState((prev) => ({ ...prev, stage: 'round-2-play' }));
+      } else if (currentHash.startsWith('round2/checkpoint') || currentHash.startsWith('round-2/checkpoint')) {
+        setQuizState((prev) => ({ ...prev, stage: 'round-2-checkpoint' }));
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Save changes to storage
+  useEffect(() => {
+    saveQuizState(quizState);
+  }, [quizState]);
+
+  // Auto-detect if logged in participant already qualified for Round 2
+  useEffect(() => {
+    const token = quizState.participant?.token || localStorage.getItem('R2_Token');
+    if (!token) return;
+    let isMounted = true;
+
+    async function checkRound2Active() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/round2/current`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data && (data.state === 'PENDING_SOLVE' || data.state === 'TRANSIT' || data.state === 'COMPLETE')) {
+            const currentHash = window.location.hash.replace(/^#\/?/, '');
+            if (!currentHash || currentHash === 'login' || currentHash === 'round-1') {
+              setQuizState((prev) => ({ ...prev, stage: 'round-2-play' }));
+              navigateStage('round-2-play');
+            }
+          }
+        } else if (isMounted) {
+          // Team is NOT qualified for Round 2 (e.g. event reset or in Round 1)
+          setQuizState((prev) => {
+            if (prev.stage === 'round-2-play' || prev.stage === 'round-2-rules' || prev.stage === 'results') {
+              return { ...prev, stage: 'round-1', result: null };
+            }
+            return prev;
+          });
+          const currentHash = window.location.hash.replace(/^#\/?/, '');
+          if (currentHash === 'round-2' || currentHash === 'round2' || currentHash === 'results') {
+            navigateStage('round-1');
+          }
+        }
+      } catch (err) {
+        // Fallback silently if offline
+      }
+    }
+
+    checkRound2Active();
+    return () => { isMounted = false; };
+  }, [quizState.participant?.token, navigateStage]);
+
   const handleLogout = () => {
+    clearQuizState();
+    localStorage.removeItem('R2_Token');
     setQuizState({
       stage: 'login',
       participant: null,
@@ -91,9 +144,8 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
       rank: null,
       round2: null,
     });
-    sessionStorage.removeItem('egt2_wizarding_hunt_v2');
     window.location.hash = '#/login';
-    if (onTriggerToast) onTriggerToast(' LOGGED OUT SUCCESSFULLY ');
+    if (onTriggerToast) onTriggerToast('✦ LOGGED OUT SUCCESSFULLY ✦');
   };
 
   // Allow returning to Round 1 to retry if codeword was incorrect
@@ -106,12 +158,34 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
     navigateStage('round-1');
   };
 
-  // Login handler
-  const handleLoginSuccess = (participantData) => {
+  // Login handler: Checks if participant has active Round 2 before defaulting to Round 1
+  const handleLoginSuccess = async (participantData) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/round2/current`, {
+        headers: { Authorization: `Bearer ${participantData.token}` }
+      });
+      if (res.ok) {
+        const r2Data = await res.json();
+        if (r2Data && (r2Data.state === 'PENDING_SOLVE' || r2Data.state === 'TRANSIT' || r2Data.state === 'COMPLETE')) {
+          setQuizState((prev) => ({
+            ...prev,
+            participant: participantData,
+            stage: 'round-2-play',
+          }));
+          navigateStage('round-2-play');
+          if (onTriggerToast) onTriggerToast('✦ RESUMING ROUND 2 · EXPEDITION ACTIVE ✦');
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not verify Round 2 state upon login', e);
+    }
+
     setQuizState((prev) => ({
       ...prev,
       participant: participantData,
       stage: 'round-1',
+      result: null
     }));
     navigateStage('round-1');
   };
@@ -250,7 +324,7 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
     case 'round-2-play':
       return (
         <Round2PlayView
-          participant={quizState.participant}
+          participant={quizState.participant || { name: 'Seeker', teamId: 'TEAM', token: localStorage.getItem('R2_Token') }}
           onBackToHall={onExitToGreatHall}
           onTriggerToast={onTriggerToast}
           onLogout={handleLogout}

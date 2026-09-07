@@ -14,6 +14,7 @@
       background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
       color: #e0e0e0;
       min-height: 100vh;
+      box-sizing: border-box;
     }
     
     .header {
@@ -21,107 +22,151 @@
       background: rgba(255, 255, 255, 0.08);
       border-radius: 16px;
       border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 25px 40px;
-      margin-bottom: 30px;
+      padding: 22px 35px;
+      margin-bottom: 25px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     }
-    .header h1 { margin: 0; font-weight: 800; font-size: 32px; background: -webkit-linear-gradient(#fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header h1 { 
+      margin: 0; 
+      font-weight: 800; 
+      font-size: 30px; 
+      background: linear-gradient(#fff, #aaa); 
+      -webkit-background-clip: text; 
+      background-clip: text; 
+      -webkit-text-fill-color: transparent; 
+    }
     
-    .stats { display: flex; gap: 20px; margin-bottom: 30px; }
+    .stats { display: flex; gap: 20px; margin-bottom: 25px; }
     .stat-box {
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 16px;
-      padding: 25px;
+      padding: 20px;
       flex: 1;
       text-align: center;
       box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-      transition: transform 0.3s ease;
     }
-    .stat-box:hover { transform: translateY(-5px); }
-    .stat-value { font-size: 42px; font-weight: 800; margin-top: 10px; color: #fff; text-shadow: 0 2px 10px rgba(255,255,255,0.2); }
+    .stat-value { font-size: 38px; font-weight: 800; margin-top: 8px; color: #fff; text-shadow: 0 2px 10px rgba(255,255,255,0.2); }
     
     .panel {
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 16px;
-      padding: 30px;
-      margin-bottom: 30px;
+      padding: 25px 30px;
+      margin-bottom: 25px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     }
     
-    .hint-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; }
+    .hint-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
     .hint-btn {
-      padding: 15px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;
-      transition: all 0.2s ease;
+      padding: 14px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer;
       font-family: 'Outfit', sans-serif;
-      font-size: 16px;
+      font-size: 15px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: background 0.2s, transform 0.1s;
+      user-select: none;
     }
     .hint-on { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
     .hint-off { background: linear-gradient(135deg, #cb2d3e, #ef473a); color: white; }
-    .hint-btn:hover { transform: scale(1.05); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
-    .hint-btn:active { transform: scale(0.95); }
+    .hint-btn:active { transform: scale(0.96); }
     
     table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; }
-    th, td { padding: 18px 15px; text-align: left; }
-    th { background: rgba(0,0,0,0.3); font-weight: 600; color: #bbb; text-transform: uppercase; letter-spacing: 1px; font-size: 14px; }
+    th, td { padding: 14px 12px; text-align: left; }
+    th { background: rgba(0,0,0,0.35); font-weight: 600; color: #bbb; text-transform: uppercase; letter-spacing: 1px; font-size: 13px; }
     th:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
     th:last-child { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
-    tbody tr { transition: background 0.2s; }
-    tbody tr:hover { background: rgba(255,255,255,0.08); }
+    tbody tr { transition: background 0.15s; }
+    tbody tr:hover { background: rgba(255,255,255,0.06); }
     tbody td { border-bottom: 1px solid rgba(255,255,255,0.05); }
     
     .status-QUALIFIED { color: #38ef7d; font-weight: 600; text-shadow: 0 0 10px rgba(56,239,125,0.4); }
     .status-COMPLETED_NOT_QUALIFIED { color: #f2c94c; font-weight: 600; }
     
-    .tab-bar { display: flex; gap: 15px; margin-bottom: 30px; justify-content: center; }
+    .tab-bar { display: flex; gap: 15px; margin-bottom: 25px; justify-content: center; }
     .tab {
-      padding: 12px 30px; cursor: pointer; color: #aaa; background: rgba(0,0,0,0.3);
-      border-radius: 30px; font-size: 18px; font-weight: 600;
-      transition: all 0.3s ease;
-      border: 1px solid rgba(255,255,255,0.05);
+      padding: 12px 28px; cursor: pointer; color: #aaa; background: rgba(0,0,0,0.35);
+      border-radius: 30px; font-size: 17px; font-weight: 600;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(255,255,255,0.08);
+      outline: none;
+      font-family: 'Outfit', sans-serif;
     }
-    .tab:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .tab:hover { background: rgba(255,255,255,0.12); color: #fff; }
     .tab.active { background: linear-gradient(135deg, #00c6ff, #0072ff); color: white; box-shadow: 0 4px 20px rgba(0,114,255,0.5); border-color: transparent; }
-    .tab-content { display: none; animation: fadeIn 0.4s ease; }
+    .tab-content { display: none; }
     .tab-content.active { display: block; }
     
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-    
     #login-modal > div {
-      background: rgba(20, 20, 20, 0.95) !important;
-      border: 1px solid rgba(255,255,255,0.1);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      background: rgba(20, 20, 20, 0.98) !important;
+      border: 1px solid rgba(255,255,255,0.15);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7);
     }
     input {
       font-family: 'Outfit', sans-serif;
-      background: rgba(255,255,255,0.05) !important;
+      background: rgba(255,255,255,0.06) !important;
       border: 1px solid rgba(255,255,255,0.2) !important;
       color: white !important;
-      transition: all 0.3s;
     }
-    input:focus { outline: none; border-color: #00c6ff !important; background: rgba(255,255,255,0.1) !important; box-shadow: 0 0 15px rgba(0,198,255,0.3); }
+    input:focus { outline: none; border-color: #00c6ff !important; background: rgba(255,255,255,0.12) !important; box-shadow: 0 0 15px rgba(0,198,255,0.3); }
     
-    .event-panel { background: rgba(0,0,0,0.2) !important; border: 1px solid rgba(255,255,255,0.1) !important; padding: 40px !important; }
+    .event-panel { background: rgba(0,0,0,0.25) !important; border: 1px solid rgba(255,255,255,0.1) !important; padding: 35px !important; }
     
     .cool-btn {
-      padding: 15px 35px !important; font-size: 20px !important; font-weight: 800 !important; font-family: 'Outfit', sans-serif !important; border-radius: 12px !important; cursor: pointer !important; transition: all 0.3s ease !important; border: none !important; color: white !important; letter-spacing: 1px;
+      padding: 13px 30px !important; font-size: 18px !important; font-weight: 700 !important; font-family: 'Outfit', sans-serif !important; border-radius: 12px !important; cursor: pointer !important; transition: all 0.2s ease !important; border: none !important; color: white !important; letter-spacing: 0.5px;
     }
-    .btn-start { background: linear-gradient(135deg, #11998e, #38ef7d) !important; box-shadow: 0 4px 15px rgba(56,239,125,0.4) !important; }
-    .btn-stop { background: linear-gradient(135deg, #cb2d3e, #ef473a) !important; box-shadow: 0 4px 15px rgba(239,71,58,0.4) !important; }
-    .btn-reset { background: linear-gradient(135deg, #606c88, #3f4c6b) !important; box-shadow: 0 4px 15px rgba(96,108,136,0.4) !important; }
-    .cool-btn:hover { transform: translateY(-3px) scale(1.02) !important; }
-    .cool-btn:active { transform: translateY(1px) scale(0.98) !important; }
-    .cool-btn:disabled { opacity: 0.7; transform: none !important; cursor: not-allowed !important; }
+    .btn-start { background: linear-gradient(135deg, #11998e, #38ef7d) !important; box-shadow: 0 4px 15px rgba(56,239,125,0.3) !important; }
+    .btn-stop { background: linear-gradient(135deg, #cb2d3e, #ef473a) !important; box-shadow: 0 4px 15px rgba(239,71,58,0.3) !important; }
+    .btn-reset { background: linear-gradient(135deg, #606c88, #3f4c6b) !important; box-shadow: 0 4px 15px rgba(96,108,136,0.3) !important; }
+    .cool-btn:active { transform: scale(0.97) !important; }
+    .cool-btn:disabled { opacity: 0.6; cursor: not-allowed !important; transform: none !important; }
+
+    /* Glowing Assigned Path Nodes */
+    .path-flow { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .path-node {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+      cursor: default;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .node-done {
+      background: rgba(56, 239, 125, 0.15);
+      color: #38ef7d;
+      border: 1px solid rgba(56, 239, 125, 0.4);
+      box-shadow: 0 0 8px rgba(56, 239, 125, 0.25);
+    }
+    .node-active {
+      background: linear-gradient(135deg, rgba(0, 198, 255, 0.35), rgba(0, 114, 255, 0.45));
+      color: #ffffff;
+      border: 1px solid #00c6ff;
+      box-shadow: 0 0 12px rgba(0, 198, 255, 0.8), inset 0 0 6px rgba(0, 198, 255, 0.4);
+      font-weight: 800;
+    }
+    .node-locked {
+      background: rgba(255, 255, 255, 0.04);
+      color: #666;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .path-arrow {
+      color: #555;
+      font-size: 10px;
+    }
+    .path-arrow.arrow-passed {
+      color: #38ef7d;
+      text-shadow: 0 0 6px rgba(56, 239, 125, 0.4);
+    }
   </style>
 </head>
 <body>
   <!-- Admin Login Modal -->
-  <div id="login-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:1000;">
-    <div style="background:#333; padding:30px; border-radius:8px; text-align:center;">
-      <h2>Admin Login</h2>
-      <input type="password" id="admin-pass" placeholder="Enter Admin Secret" style="padding:10px; width:200px; margin-bottom:15px; border-radius:4px; border:none;">
+  <div id="login-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:1000;">
+    <div style="background:#222; padding:35px 40px; border-radius:12px; text-align:center; max-width: 320px; width: 100%;">
+      <h2 style="margin-top:0; color:#fff;">Admin Login</h2>
+      <input type="password" id="admin-pass" placeholder="Enter Admin Secret" style="padding:12px; width:100%; margin-bottom:18px; border-radius:6px; box-sizing:border-box;">
       <br>
       <button id="admin-login-btn" onclick="loginAdmin()" class="cool-btn btn-start" style="width: 100%;">Login to Dashboard</button>
       <div class="error" id="admin-error" style="color:#ff6b6b; margin-top:15px; display:none; font-weight:600;">Invalid Password</div>
@@ -129,39 +174,39 @@
   </div>
 
   <div class="header">
-    <h1>Round 1 Admin Dashboard</h1>
+    <h1>EGT 2.0 Admin Command Center</h1>
     <div>
-      Status: <span id="round-status">LOADING</span> | 
-      Time: <span id="time-remaining">--:--</span>
+      Status: <strong id="round-status">LOADING</strong> | 
+      Timer: <strong id="time-remaining">--:--</strong>
     </div>
   </div>
 
   <!-- TABS -->
   <div class="tab-bar">
-    <div class="tab active" onclick="switchTab('dashboard')">Round 1 Dashboard</div>
-    <div class="tab" onclick="switchTab('teams')">All Teams List</div>
-    <div class="tab" onclick="switchTab('round2')">Round 2 Control</div>
+    <button id="tab-btn-dashboard" class="tab active" onclick="switchTab('dashboard')">Round 1 Dashboard</button>
+    <button id="tab-btn-teams" class="tab" onclick="switchTab('teams')">All Teams List</button>
+    <button id="tab-btn-round2" class="tab" onclick="switchTab('round2')">Round 2 Control</button>
   </div>
 
   <!-- TAB 1: DASHBOARD -->
   <div id="tab-dashboard" class="tab-content active">
     
     <div class="panel event-panel" style="text-align: center;">
-      <h2 style="margin-top:0; font-size: 24px; color: #bbb;">EVENT STATUS: <span id="event-status-text" style="color:#f2c94c; font-weight: 800; text-shadow: 0 0 10px rgba(242,201,76,0.3);">CLOSED</span></h2>
-      <div style="font-size: 64px; font-weight: 800; font-family: 'Outfit', monospace; color: #fff; margin: 20px 0; letter-spacing: 2px; text-shadow: 0 4px 20px rgba(255,255,255,0.2);" id="admin-timer">00:00</div>
+      <h2 style="margin-top:0; font-size: 22px; color: #bbb;">EVENT STATUS: <span id="event-status-text" style="color:#f2c94c; font-weight: 800;">CLOSED</span></h2>
+      <div style="font-size: 60px; font-weight: 800; font-family: 'Outfit', monospace; color: #fff; margin: 15px 0; letter-spacing: 2px; text-shadow: 0 4px 20px rgba(255,255,255,0.2);" id="admin-timer">00:00</div>
       
-      <div id="start-controls" style="margin-top: 30px; display: none;">
+      <div id="start-controls" style="margin-top: 25px; display: none;">
         <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 20px;">
-          <label style="color: #aaa; font-size: 18px; font-weight: 600;">Duration (minutes):</label>
-          <input type="number" id="duration-input" value="20" min="1" max="120" style="font-size: 20px; padding: 10px; width: 80px; text-align: center; border-radius: 8px;">
+          <label style="color: #aaa; font-size: 17px; font-weight: 600;">Duration (minutes):</label>
+          <input type="number" id="duration-input" value="20" min="1" max="120" style="font-size: 18px; padding: 8px 12px; width: 80px; text-align: center; border-radius: 8px;">
         </div>
-        <div style="display: flex; justify-content: center; gap: 20px;">
+        <div style="display: flex; justify-content: center; gap: 15px;">
           <button id="start-btn" onclick="startRound()" class="cool-btn btn-start">START ROUND 1</button>
           <button id="reset-btn" onclick="resetRound()" class="cool-btn btn-reset">RESET EVENT</button>
         </div>
       </div>
 
-      <div id="stop-controls" style="margin-top: 30px; display: none;">
+      <div id="stop-controls" style="margin-top: 25px; display: none;">
         <button id="stop-btn" onclick="stopRound()" class="cool-btn btn-stop">STOP ROUND 1</button>
       </div>
     </div>
@@ -178,14 +223,20 @@
     </div>
 
     <div class="panel">
-      <h3>Hint Controls</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+        <h3 style="margin:0;">Hint Controls</h3>
+        <div style="display: flex; gap: 10px;">
+          <button onclick="toggleAllHints(true)" class="cool-btn btn-start" style="font-size: 13px !important; padding: 7px 16px !important;">🟢 ENABLE ALL</button>
+          <button onclick="toggleAllHints(false)" class="cool-btn btn-stop" style="font-size: 13px !important; padding: 7px 16px !important;">🔴 DISABLE ALL</button>
+        </div>
+      </div>
       <div class="hint-grid" id="hint-controls">
-        <!-- Buttons injected here -->
+        <!-- Buttons initialized once by JS -->
       </div>
     </div>
 
     <div class="panel">
-      <h3>Qualifications Log</h3>
+      <h3 style="margin-top:0;">Qualifications Log</h3>
       <table>
         <thead>
           <tr>
@@ -205,7 +256,7 @@
   <!-- TAB 2: TEAMS LIST -->
   <div id="tab-teams" class="tab-content">
     <div class="panel">
-        <h3>All Teams (Reference)</h3>
+        <h3 style="margin-top:0;">All Teams (Reference Credentials)</h3>
         <table id="teams-table" style="font-size: 14px;">
           <thead>
             <tr>
@@ -224,18 +275,25 @@
   <!-- TAB 3: ROUND 2 -->
   <div id="tab-round2" class="tab-content">
     <div class="panel event-panel" style="text-align: center;">
-      <h2 style="margin-top:0; font-size: 24px; color: #bbb;">ROUND 2 STATUS</h2>
-      <button id="reset-r2-btn" onclick="resetRound2()" class="cool-btn btn-reset" style="margin-top: 15px;">RESET ROUND 2 EVENT</button>
+      <h2 style="margin-top:0; font-size: 22px; color: #bbb;">ROUND 2 EXPEDITION MONITOR</h2>
+      <div style="display: flex; justify-content: center; gap: 15px; margin-top: 15px;">
+        <button id="refresh-r2-btn" onclick="loadRound2Status()" class="cool-btn btn-start" style="font-size: 15px !important; padding: 10px 24px !important;">🔄 REFRESH NOW</button>
+        <button id="reset-r2-btn" onclick="resetRound2()" class="cool-btn btn-reset" style="font-size: 15px !important; padding: 10px 24px !important;">RESET ROUND 2 EVENT</button>
+      </div>
     </div>
     <div class="panel">
-      <h3>Round 2 Progress</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="margin: 0;">Live Squad Checkpoint Tracker</h3>
+        <span id="r2-last-updated" style="font-size: 12px; color: #888;">Auto-refreshing every 2s</span>
+      </div>
       <table id="r2-table" style="font-size: 14px;">
         <thead>
           <tr>
             <th>Team</th>
-            <th>Path Assigned</th>
-            <th>Current Step</th>
-            <th>State</th>
+            <th>Assigned Path</th>
+            <th>Step</th>
+            <th>Current Target Landmark</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody id="r2-tbody">
@@ -246,19 +304,58 @@
   </div>
 
   <script>
+    const BACKEND_URL = (typeof window !== 'undefined' && window.location.origin && window.location.origin.startsWith('http'))
+      ? window.location.origin
+      : 'http://localhost:3001';
+
+    let adminToken = localStorage.getItem('adminToken') || '';
+    const expiryStr = localStorage.getItem('adminExpiry');
+
+    // UI Cache to prevent DOM tearing & flickering
+    let lastStatusDataHash = '';
+    let lastRound2DataHash = '';
+    let isPollingBusy = false;
+    let pollTimer = null;
+
+    // Initialize 10 persistent hint buttons on page load
+    const initHintButtons = () => {
+      const hintGrid = document.getElementById('hint-controls');
+      if (!hintGrid || hintGrid.children.length === 10) return;
+      hintGrid.innerHTML = '';
+      for (let i = 1; i <= 10; i++) {
+        const qId = `Q${i}`;
+        const btn = document.createElement('button');
+        btn.id = `hint-btn-${qId}`;
+        btn.className = 'hint-btn hint-off';
+        btn.textContent = `${qId}: OFF`;
+        btn.onclick = () => toggleHint(qId);
+        hintGrid.appendChild(btn);
+      }
+    };
+    initHintButtons();
+
     const switchTab = (tabId) => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       
-      event.target.classList.add('active');
-      document.getElementById('tab-' + tabId).classList.add('active');
+      const targetBtn = document.getElementById('tab-btn-' + tabId);
+      const targetContent = document.getElementById('tab-' + tabId);
+      if (targetBtn) targetBtn.classList.add('active');
+      if (targetContent) targetContent.classList.add('active');
+
+      if (tabId === 'round2') {
+        loadRound2Status();
+      } else if (tabId === 'teams') {
+        loadTeams();
+      } else if (tabId === 'dashboard') {
+        loadStatus();
+      }
     };
 
-    const BACKEND_URL = (typeof window !== 'undefined' && window.location.origin && window.location.origin.startsWith('http'))
-      ? window.location.origin
-      : 'http://localhost:3001';
-    let adminToken = localStorage.getItem('adminToken') || '';
-    const expiryStr = localStorage.getItem('adminExpiry');
+    const getHeaders = () => ({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminToken}`
+    });
 
     const loginAdmin = async () => {
       const pass = document.getElementById('admin-pass').value;
@@ -272,40 +369,53 @@
         const response = await fetch(`${BACKEND_URL}/api/admin/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pass })
+          body: JSON.stringify({ pass: pass.trim() })
         });
         
         const data = await response.json();
         
         if (response.ok) {
           adminToken = data.token;
-          
-          // Set 20 min expiry
           localStorage.setItem('adminToken', adminToken);
           localStorage.setItem('adminExpiry', (Date.now() + 20 * 60 * 1000).toString());
           
           document.getElementById('login-modal').style.display = 'none';
           document.getElementById('admin-error').style.display = 'none';
+          
           loadStatus();
           loadTeams(); 
-          setInterval(loadStatus, 2000);
+          loadRound2Status();
+          startPolling();
         } else {
           document.getElementById('admin-error').textContent = data.error || 'Login Failed';
           document.getElementById('admin-error').style.display = 'block';
         }
       } catch (e) {
-        document.getElementById('admin-error').textContent = 'Server Error';
+        document.getElementById('admin-error').textContent = 'Server Error: ' + e.message;
         document.getElementById('admin-error').style.display = 'block';
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Login';
+        btn.textContent = 'Login to Dashboard';
       }
     };
 
-    const getHeaders = () => ({
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${adminToken}`
-    });
+    const startPolling = () => {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        if (isPollingBusy) return;
+        isPollingBusy = true;
+        try {
+          const r2Tab = document.getElementById('tab-round2');
+          if (r2Tab && r2Tab.classList.contains('active')) {
+            await loadRound2Status();
+          } else {
+            await loadStatus();
+          }
+        } finally {
+          isPollingBusy = false;
+        }
+      }, 2000);
+    };
 
     let adminTimeRemaining = 0;
     let localTimerInterval = null;
@@ -331,24 +441,18 @@
       
       const btn = document.getElementById('start-btn');
       btn.disabled = true;
-      btn.textContent = 'Starting...';
-
       try {
         const res = await fetch(`${BACKEND_URL}/api/admin/start`, {
           method: 'POST',
           headers: getHeaders(),
           body: JSON.stringify({ durationMins: parseInt(durationMins, 10) })
         });
-        if (res.ok) {
-          await loadStatus();
-        } else {
-          alert('Failed to start round.');
-        }
+        if (res.ok) await loadStatus();
+        else alert('Failed to start round.');
       } catch (e) {
         console.error(e);
       } finally {
         btn.disabled = false;
-        btn.textContent = 'START ROUND 1';
       }
     };
 
@@ -357,8 +461,6 @@
       
       const btn = document.getElementById('stop-btn');
       btn.disabled = true;
-      btn.textContent = 'Stopping...';
-
       try {
         const res = await fetch(`${BACKEND_URL}/api/admin/stop`, {
           method: 'POST',
@@ -367,7 +469,6 @@
         if (res.ok) await loadStatus();
       } catch (e) { console.error(e); } finally {
         btn.disabled = false;
-        btn.textContent = 'STOP ROUND 1';
       }
     };
 
@@ -376,8 +477,6 @@
       
       const btn = document.getElementById('reset-btn');
       btn.disabled = true;
-      btn.textContent = 'Resetting...';
-
       try {
         const res = await fetch(`${BACKEND_URL}/api/admin/reset`, {
           method: 'POST',
@@ -386,7 +485,6 @@
         if (res.ok) await loadStatus();
       } catch (e) { console.error(e); } finally {
         btn.disabled = false;
-        btn.textContent = 'RESET EVENT';
       }
     };
 
@@ -394,9 +492,7 @@
       try {
         const res = await fetch(`${BACKEND_URL}/api/admin/status`, { headers: getHeaders() });
         if (res.status === 401) {
-          // Token expired or invalid, reset
           localStorage.removeItem('adminToken');
-          localStorage.removeItem('adminExpiry');
           document.getElementById('login-modal').style.display = 'flex';
           return;
         }
@@ -404,9 +500,8 @@
 
         // Update Event Status & Timer
         document.getElementById('event-status-text').textContent = data.status;
-        document.getElementById('event-status-text').style.color = data.status === 'ACTIVE' ? '#28a745' : '#ffc107';
+        document.getElementById('event-status-text').style.color = data.status === 'ACTIVE' ? '#38ef7d' : '#f2c94c';
         
-        // Only resync the base timer from server to avoid local jitter, let setInterval handle the ticks
         if (Math.abs(adminTimeRemaining - data.timeRemaining) > 3000) {
             adminTimeRemaining = data.timeRemaining;
         }
@@ -427,45 +522,114 @@
         document.getElementById('stat-qualified').textContent = `${data.qualifiedCount} / ${data.maxQualifiers}`;
         document.getElementById('stat-submissions').textContent = data.submissions;
 
-        // Render hints
-        const hintGrid = document.getElementById('hint-controls');
-        hintGrid.innerHTML = '';
-        for (let i = 1; i <= 10; i++) {
-          const qId = `Q${i}`;
-          const isEnabled = data.hints[qId];
-          const btn = document.createElement('button');
-          btn.className = `hint-btn ${isEnabled ? 'hint-on' : 'hint-off'}`;
-          btn.textContent = `${qId}: ${isEnabled ? 'ON' : 'OFF'}`;
-          btn.onclick = () => toggleHint(qId, !isEnabled);
-          hintGrid.appendChild(btn);
+        // Update hint buttons in-place (no DOM wipe, respect in-flight toggles!)
+        if (data.hints) {
+          for (let i = 1; i <= 10; i++) {
+            const qId = `Q${i}`;
+            if (pendingHintUpdates.has(qId)) continue; // Never overwrite while click is in-flight!
+            const isEnabled = !!data.hints[qId];
+            const btn = document.getElementById(`hint-btn-${qId}`);
+            if (btn) {
+              btn.className = `hint-btn ${isEnabled ? 'hint-on' : 'hint-off'}`;
+              btn.textContent = `${qId}: ${isEnabled ? 'ON' : 'OFF'}`;
+            }
+          }
         }
 
-        // Render log
-        const tbody = document.getElementById('log-table');
-        tbody.innerHTML = '';
-        data.qualificationsTable.forEach(s => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>#${s.rank}</td>
-            <td>${s.team_id}</td>
-            <td>${new Date(s.submitted_at).toLocaleTimeString()}</td>
-            <td class="status-${s.status}">${s.status}</td>
-          `;
-          tbody.appendChild(tr);
-        });
+        // Render log only if changed
+        const logHash = JSON.stringify(data.qualificationsTable || []);
+        if (logHash !== lastStatusDataHash) {
+          lastStatusDataHash = logHash;
+          const tbody = document.getElementById('log-table');
+          tbody.innerHTML = '';
+          (data.qualificationsTable || []).forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>#${s.rank}</td>
+              <td>${s.team_id}</td>
+              <td>${new Date(s.submitted_at).toLocaleTimeString()}</td>
+              <td class="status-${s.status}">${s.status}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
 
       } catch(e) {
         console.error('loadStatus error:', e);
       }
     };
 
-    const toggleHint = async (qId, enable) => {
-      await fetch(`${BACKEND_URL}/api/admin/hints`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ questionId: qId, enabled: enable })
-      });
-      loadStatus();
+    const pendingHintUpdates = new Set();
+
+    const toggleHint = async (qId) => {
+      if (pendingHintUpdates.has(qId)) return;
+      pendingHintUpdates.add(qId);
+
+      const btn = document.getElementById(`hint-btn-${qId}`);
+      const isCurrentlyOn = btn ? btn.classList.contains('hint-on') : false;
+      const nextState = !isCurrentlyOn;
+      
+      // Immediate UI update with temporary lock
+      if (btn) {
+        btn.disabled = true;
+        btn.className = `hint-btn ${nextState ? 'hint-on' : 'hint-off'}`;
+        btn.textContent = `${qId}: ${nextState ? 'ON' : 'OFF'}`;
+      }
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/admin/hints`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ questionId: qId, enabled: nextState })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          console.error('Toggle error:', data.error);
+          if (btn) {
+            btn.className = `hint-btn ${isCurrentlyOn ? 'hint-on' : 'hint-off'}`;
+            btn.textContent = `${qId}: ${isCurrentlyOn ? 'ON' : 'OFF'}`;
+          }
+        }
+      } catch (err) {
+        console.error('Hint toggle failed:', err);
+        if (btn) {
+          btn.className = `hint-btn ${isCurrentlyOn ? 'hint-on' : 'hint-off'}`;
+          btn.textContent = `${qId}: ${isCurrentlyOn ? 'ON' : 'OFF'}`;
+        }
+      } finally {
+        pendingHintUpdates.delete(qId);
+        if (btn) btn.disabled = false;
+      }
+    };
+
+    const toggleAllHints = async (enable) => {
+      for (let i = 1; i <= 10; i++) {
+        const qId = `Q${i}`;
+        pendingHintUpdates.add(qId);
+        const btn = document.getElementById(`hint-btn-${qId}`);
+        if (btn) {
+          btn.disabled = true;
+          btn.className = `hint-btn ${enable ? 'hint-on' : 'hint-off'}`;
+          btn.textContent = `${qId}: ${enable ? 'ON' : 'OFF'}`;
+        }
+      }
+
+      try {
+        await fetch(`${BACKEND_URL}/api/admin/hints/bulk`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ enabled: enable })
+        });
+      } catch (err) {
+        console.error('Bulk hint toggle failed:', err);
+      } finally {
+        for (let i = 1; i <= 10; i++) {
+          const qId = `Q${i}`;
+          pendingHintUpdates.delete(qId);
+          const btn = document.getElementById(`hint-btn-${qId}`);
+          if (btn) btn.disabled = false;
+        }
+      }
     };
 
     const loadTeams = async () => {
@@ -476,7 +640,7 @@
         tbody.innerHTML = '';
         teams.forEach(t => {
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${t.team_id}</td><td>${t.pass}</td><td style="font-family:monospace;">${t.correct_code}</td>`;
+          tr.innerHTML = `<td><strong>${t.team_id}</strong></td><td>${t.pass}</td><td style="font-family:monospace; color:#00c6ff;">${t.correct_code}</td>`;
           tbody.appendChild(tr);
         });
       } catch (e) {
@@ -487,27 +651,84 @@
     const loadRound2Status = async () => {
       try {
         const res = await fetch(`${BACKEND_URL}/api/admin/round2/status`, { headers: getHeaders() });
+        if (res.status === 401) {
+          localStorage.removeItem('adminToken');
+          document.getElementById('login-modal').style.display = 'flex';
+          return;
+        }
         const assignments = await res.json();
+        
+        const updatedSpan = document.getElementById('r2-last-updated');
+        if (updatedSpan) {
+          updatedSpan.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+        }
+
+        const dataHash = JSON.stringify(assignments);
+        if (dataHash === lastRound2DataHash) {
+          return; // No changes in state -> do not destroy DOM
+        }
+        lastRound2DataHash = dataHash;
+
         const tbody = document.getElementById('r2-tbody');
         tbody.innerHTML = '';
+
         assignments.forEach(a => {
-          const path = a.round2_paths?.checkpoints?.join(' → ') || 'No Path';
+          const checkpoints = a.round2_paths?.checkpoints || [];
+          const destMap = a.destMap || {};
+          
+          const pathHtml = checkpoints.map((chk, idx) => {
+            const landmarkName = destMap[chk] || chk;
+            let nodeClass = 'node-locked';
+            let icon = '';
+            
+            if (a.state === 'COMPLETE' || idx < a.current_step) {
+              nodeClass = 'node-done';
+              icon = '✓ ';
+            } else if (idx === a.current_step) {
+              nodeClass = 'node-active';
+              icon = a.state === 'TRANSIT' ? '🏃 ' : '🧩 ';
+            }
+
+            const arrow = (idx < checkpoints.length - 1)
+              ? `<span class="path-arrow ${idx < a.current_step ? 'arrow-passed' : ''}">→</span>`
+              : '';
+
+            return `
+              <span class="path-node ${nodeClass}" title="${chk}: ${landmarkName}">
+                ${icon}${chk}
+              </span>
+              ${arrow}
+            `;
+          }).join('');
+
           const tr = document.createElement('tr');
           
-          let stateColor = '#fff';
-          if (a.state === 'COMPLETE') stateColor = '#38ef7d';
-          else if (a.state === 'TRANSIT') stateColor = '#f2c94c';
+          let stateBadge = '';
+          if (a.state === 'COMPLETE') {
+            stateBadge = '<span style="color:#38ef7d; font-weight:700; background:rgba(56,239,125,0.15); padding:4px 10px; border-radius:12px; border:1px solid rgba(56,239,125,0.4); box-shadow:0 0 10px rgba(56,239,125,0.3);">🏆 COMPLETE</span>';
+          } else if (a.state === 'TRANSIT') {
+            stateBadge = '<span style="color:#f2c94c; font-weight:700; background:rgba(242,201,76,0.15); padding:4px 10px; border-radius:12px; border:1px solid rgba(242,201,76,0.4);">🏃 SPRINTING</span>';
+          } else if (a.state === 'PENDING_SOLVE') {
+            stateBadge = '<span style="color:#00c6ff; font-weight:700; background:rgba(0,198,255,0.15); padding:4px 10px; border-radius:12px; border:1px solid rgba(0,198,255,0.4); box-shadow:0 0 10px rgba(0,198,255,0.4);">🧩 SOLVING RIDDLE</span>';
+          } else {
+            stateBadge = `<span style="color:#bbb;">${a.state}</span>`;
+          }
+
+          const targetLandmark = a.current_dest_name 
+            ? `<strong>${a.current_dest_name}</strong> <small style="color:#888;">(${a.current_dest_id || 'Fin'})</small>`
+            : '<span style="color:#38ef7d;">All Cleared</span>';
 
           tr.innerHTML = `
-            <td><strong>${a.team_id}</strong><br><small style="color:#aaa;">${a.teams?.team_name}</small></td>
-            <td style="font-size: 12px; color: #bbb;">${path}</td>
-            <td>Step ${a.current_step}</td>
-            <td style="color: ${stateColor}; font-weight: 600;">${a.state}</td>
+            <td><strong>${a.team_id}</strong><br><small style="color:#aaa;">${a.teams?.team_name || ''}</small></td>
+            <td><div class="path-flow">${pathHtml}</div></td>
+            <td><strong style="font-size: 15px; color:#fff;">Step ${a.current_step}</strong> / 7</td>
+            <td>${targetLandmark}</td>
+            <td>${stateBadge}</td>
           `;
           tbody.appendChild(tr);
         });
       } catch (e) {
-        console.error(e);
+        console.error('loadRound2Status error:', e);
       }
     };
 
@@ -516,8 +737,6 @@
       
       const btn = document.getElementById('reset-r2-btn');
       btn.disabled = true;
-      btn.textContent = 'Resetting...';
-
       try {
         const res = await fetch(`${BACKEND_URL}/api/admin/round2/reset`, {
           method: 'POST',
@@ -526,22 +745,16 @@
         if (res.ok) await loadRound2Status();
       } catch (e) { console.error(e); } finally {
         btn.disabled = false;
-        btn.textContent = 'RESET ROUND 2 EVENT';
       }
     };
 
-    // Check if session exists and is valid (Must be at the bottom to avoid TDZ errors)
+    // Auto-login session restore
     if (adminToken && expiryStr && parseInt(expiryStr) > Date.now()) {
       document.getElementById('login-modal').style.display = 'none';
       loadStatus();
       loadTeams();
       loadRound2Status();
-      setInterval(() => {
-        loadStatus();
-        if (document.getElementById('tab-round2').classList.contains('active')) {
-          loadRound2Status();
-        }
-      }, 2000);
+      startPolling();
     }
   </script>
 </body>
