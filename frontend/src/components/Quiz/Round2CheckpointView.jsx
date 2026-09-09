@@ -69,6 +69,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
   const [questionText, setQuestionText] = useState('');
   const [answerInput, setAnswerInput] = useState('');
   const [nextDest, setNextDest] = useState('');
+  const [nextRiddle, setNextRiddle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Progress tracking
@@ -172,6 +173,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           totalSteps: data.totalSteps || 7,
           remainingSteps: data.remainingSteps !== undefined ? data.remainingSteps : Math.max(0, (data.totalSteps || 7) - data.currentStep),
           stepNumber: data.currentStep,
+          displayStep: data.displayStep !== undefined ? data.displayStep : data.currentStep,
           currentDestination: data.arrivedDestination || data.currentDestination || null,
           arrivedDestination: data.arrivedDestination || data.currentDestination || null,
           isInitialStart: data.currentStep === 0
@@ -219,6 +221,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           totalSteps: data.totalSteps || 7,
           remainingSteps: data.remainingSteps !== undefined ? data.remainingSteps : Math.max(0, (data.totalSteps || 7) - data.currentStep),
           stepNumber: data.currentStep,
+          displayStep: data.displayStep !== undefined ? data.displayStep : data.currentStep,
           currentDestination: data.arrivedDestination || data.currentDestination || null,
           arrivedDestination: data.arrivedDestination || data.currentDestination || null,
           isInitialStart: data.currentStep === 0
@@ -230,6 +233,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
         setUiState('solving');
       } else if (data.state === 'TRANSIT') {
         setNextDest(data.nextDestination);
+        setNextRiddle(data.nextRiddle);
         setUiState('transit');
       } else if (data.state === 'COMPLETE') {
         setUiState('complete');
@@ -278,6 +282,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           totalSteps: data.totalSteps || 7,
           remainingSteps: data.remainingSteps !== undefined ? data.remainingSteps : Math.max(0, (data.totalSteps || 7) - data.currentStep),
           stepNumber: data.currentStep,
+          displayStep: data.displayStep !== undefined ? data.displayStep : data.currentStep,
           currentDestination: data.arrivedDestination || data.currentDestination || null,
           arrivedDestination: data.arrivedDestination || data.currentDestination || null,
           isInitialStart: data.currentStep === 0
@@ -305,8 +310,9 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
         if (onTriggerToast) onTriggerToast(' 🏆 ALL RIDDLES SOLVED! SPRINT TO THE FOUNTAIN! ');
       } else {
         setNextDest(data.nextDestination);
+        setNextRiddle(data.nextRiddle);
         setUiState('transit');
-        if (onTriggerToast) onTriggerToast(' CORRECT! SPRINT TO NEXT DESTINATION! ');
+        if (onTriggerToast) onTriggerToast(' CORRECT! DECIPHER THE NEXT RIDDLE! ');
       }
     } catch (err) {
       setIsSubmitting(false);
@@ -356,9 +362,9 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
                 <span className="star-dot">✦</span>
                 {uiState === 'complete' 
                   ? `ALL ${stepInfo.totalSteps - 1} CHECKPOINTS COMPLETED!` 
-                  : stepInfo.currentStep === 0
+                  : stepInfo.displayStep === 0
                   ? `STARTING TRIAL • ${stepInfo.totalSteps - 1} CHECKPOINTS TO GO`
-                  : `CHECKPOINT ${stepInfo.currentStep} OF ${stepInfo.totalSteps - 1} CLEARED`}
+                  : `CHECKPOINT ${stepInfo.displayStep} OF ${stepInfo.totalSteps - 1} CLEARED`}
               </span>
               <span className="r2-roadmap-remaining">
                 {uiState === 'complete'
@@ -379,8 +385,8 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
 
               {nodes.map((idx) => {
                 const isFinal = idx === totalNodes - 1;
-                const isDone = uiState === 'complete' || idx < stepInfo.currentStep;
-                const isActive = uiState !== 'complete' && idx === stepInfo.currentStep;
+                const isDone = uiState === 'complete' || idx < stepInfo.displayStep;
+                const isActive = uiState !== 'complete' && idx === stepInfo.displayStep;
 
                 let nodeClass = 'r2-node-circle';
                 if (isDone) nodeClass += ' done';
@@ -507,8 +513,8 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
             
             <p className="r2-riddle-intro">
               {stepInfo.currentStep === 0
-                ? 'Decipher this starting riddle to reveal your First Checkpoint coordinates on campus:'
-                : 'Checkpoint verified! Decipher the riddle below to unlock your next destination:'}
+                ? 'Solve this starting challenge to reveal your First Checkpoint coordinates on campus:'
+                : 'Checkpoint verified! Solve the technical challenge below to earn the clue for your next destination:'}
             </p>
             
             <div className="r2-riddle-parchment th-card">
@@ -552,11 +558,11 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           </div>
         )}
 
-        {/* State 5: Transit (Destination Revealed) */}
+        {/* State 5: Transit (Destination Revealed via Riddle) */}
         {uiState === 'transit' && (
           <div className="r2-transit-card">
             <div className="r2-transit-badge">
-              <span>✓</span> {stepInfo.currentStep === 0 ? 'FIRST DESTINATION UNLOCKED!' : `CHECKPOINT ${stepInfo.currentStep} OF ${stepInfo.totalSteps} CLEARED!`}
+              <span>✓</span> {stepInfo.currentStep === 0 ? 'TRIAL UNLOCKED!' : `CHECKPOINT ${stepInfo.currentStep} OF ${stepInfo.totalSteps} CLEARED!`}
             </div>
 
             <div className="r2-dest-spotlight">
@@ -565,18 +571,32 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
               </div>
 
               <p className="r2-dest-kicker">
-                {stepInfo.currentStep === 0 ? 'SPRINT TO YOUR FIRST CHECKPOINT' : 'RUN IMMEDIATELY TO YOUR NEXT DESTINATION'}
+                {stepInfo.currentStep === 0 ? 'SOLVE THIS TO FIND YOUR FIRST CHECKPOINT' : 'SOLVE THIS TO FIND YOUR NEXT DESTINATION'}
               </p>
-              <h2 className="r2-dest-name">{nextDest}</h2>
-              <p className="r2-dest-instruction">
-                Sprint to this campus landmark immediately with your squad!
+              
+              {nextRiddle ? (
+                <div className="r2-riddle-parchment th-card" style={{ marginTop: '1rem', whiteSpace: 'pre-line', padding: '1.5rem', textAlign: 'center' }}>
+                  <span className="corner tl"></span>
+                  <span className="corner tr"></span>
+                  <span className="corner bl"></span>
+                  <span className="corner br"></span>
+                  <p className="r2-riddle-text" style={{ fontSize: '1.15rem', fontStyle: 'italic', lineHeight: '1.6', color: '#f0d089', margin: 0 }}>
+                    {nextRiddle}
+                  </p>
+                </div>
+              ) : (
+                <h2 className="r2-dest-name">{nextDest}</h2>
+              )}
+              
+              <p className="r2-dest-instruction" style={{ marginTop: '1.5rem' }}>
+                Guess the location, sprint there immediately with your squad, and scan the QR!
               </p>
             </div>
 
             <div className="r2-action-guidance">
               <span className="r2-guidance-icon">📷</span>
               <p className="r2-guidance-text">
-                When you arrive at <strong>{nextDest}</strong>, search for the hidden tournament QR seal and scan it with your device camera to log your arrival!
+                When you arrive at <strong>the correct location</strong>, search for the hidden tournament QR seal and scan it with your device camera to log your arrival!
               </p>
             </div>
 
