@@ -16,9 +16,9 @@ function getMotivationalPush(remainingSteps, currentStep, totalSteps = 7) {
   if (remainingSteps === 1) {
     return {
       theme: 'climax',
-      pill: 'FINAL SPRINT • THE FINAL AWAITS',
-      headline: 'SPRINT TO THE FINAL! EGT 2.0 IS YOURS TO WIN!',
-      subtext: 'This is the ultimate showdown! You have conquered all previous trials. Sprint to the Final checkpoint QR code right now and claim victory!'
+      pill: 'FINAL SPRINT • THE FOUNTAIN AWAITS',
+      headline: 'SPRINT TO THE FOUNTAIN! EGT 2.0 IS YOURS TO WIN!',
+      subtext: 'This is the ultimate showdown! You have conquered all previous trials. Sprint to the FOUNTAIN right now and claim victory!'
     };
   }
   if (remainingSteps === 2) {
@@ -483,12 +483,12 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
             <div className="r2-trophy-aura">🏆</div>
             <h2 className="r2-complete-title">ALL RIDDLES CONQUERED!</h2>
             <p className="r2-complete-sub" style={{ color: '#ffd700', fontSize: '1.2rem', fontWeight: 800, letterSpacing: '0.04em' }}>
-              ✦ SPRINT TO THE FINAL DESTINATION RIGHT NOW ✦
+              ✦ SPRINT TO THE FOUNTAIN RIGHT NOW ✦
             </p>
             <p className="r2-complete-desc">
               You have conquered all checkpoints and solved every keeper's riddle!
-              The championship race is yours — sprint to the final station as fast as you can to claim victory!
-              Report your arrival to the tournament marshals at the finish line.
+              The championship race is yours — sprint to the <strong>FOUNTAIN</strong> as fast as you can to claim victory!
+              Report your arrival to our tournament marshals stationed at the Fountain finish line.
             </p>
             <button className="r2-btn-gold" onClick={onBackToHall}>RETURN TO GREAT HALL</button>
           </div>

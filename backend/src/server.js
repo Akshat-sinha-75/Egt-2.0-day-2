@@ -29,7 +29,8 @@ const DESTINATION_RIDDLES = {
   'D3': "Where footsteps echo but the sky disappears,\nA hidden passage lies beneath the cheers.\nThere’s a second home where tired boys stay,\nTake the path that runs below to find your way.",
   'D4': "A tower of layers, crowned with a bite,\nWrapped in a bun, yet hidden from sight.\nWhere a Singh stands proud without a crown,\nFind the place where hunger goes down.",
   'D5': "A dream was born far from the stars,\nYet reached beyond the world of ours.\nShe left her mark where few could go,\nChasing a place no feet could know.\nFind where her journey still inspires,\nAnd follow the path that reaches higher.",
-  'D6': "A golden maze of squares awaits,\nWhere sweetness hides behind tiny gates.\nBorn where chocolates and castles reign,\nFind this crispy treasure from across the plain."
+  'D6': "A golden maze of squares awaits,\nWhere sweetness hides behind tiny gates.\nBorn where chocolates and castles reign,\nFind this crispy treasure from across the plain.",
+  'D7': "✦ SPRINT TO THE FOUNTAIN RIGHT NOW! ✦\nYou have conquered all 6 checkpoint trials!\nSprint to the Fountain as fast as you can with your squad — our tournament marshals await your arrival at the finish line to log your victory!"
 };
 
 // Middleware: Participant Auth (via Supabase JWT)
@@ -688,8 +689,8 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
 
     return res.json({
       state: 'COMPLETE',
-      message: 'All checkpoints conquered! Sprint to the Final Destination!',
-      finalDestination: 'Final Destination',
+      message: 'All checkpoints conquered! Sprint to the Fountain!',
+      finalDestination: 'Fountain',
       currentStep: totalSteps,
       totalSteps: totalSteps,
       stepNumber: totalSteps,
