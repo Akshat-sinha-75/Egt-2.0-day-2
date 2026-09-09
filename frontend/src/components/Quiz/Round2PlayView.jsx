@@ -110,6 +110,11 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
           setErrorMessage('Your session has expired. Please log in again to resume Round 2.');
           return;
         }
+        if (res.status === 403) {
+          setUiState('error');
+          setErrorMessage('YOU MUGGLES WERE TOO SLOW FOR ROUND 2! Only the top 20 qualifying teams can enter.');
+          return;
+        }
         throw new Error(data.error || 'Failed to load round 2 state');
       }
 
@@ -208,7 +213,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
         }
         spawnSparks(window.innerWidth / 2, window.innerHeight / 2, '#ffd700', 50);
         setUiState('complete');
-        if (onTriggerToast) onTriggerToast(' 🏆 ALL RIDDLES SOLVED! SPRINT TO THE FOUNTAIN! ');
+        if (onTriggerToast) onTriggerToast(' 🏆 ALL RIDDLES CONQUERED! SPRINT TO THE FINAL DESTINATION! ');
       } else {
         setNextDest(data.nextDestination);
         setNextRiddle(data.nextRiddle);
@@ -314,12 +319,12 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
                 <span className="star-dot">✦</span>
                 <span>
                   {uiState === 'complete' 
-                    ? 'ALL CHECKPOINTS CLEARED' 
-                    : stepInfo.displayStep === 0 
+                    ? 'ALL 6 CHECKPOINTS CLEARED!' 
+                    : (stepInfo.displayStep || 0) === 0 
                       ? 'STARTING TRIAL • 6 CHECKPOINTS TO GO'
-                      : `CHECKPOINT ${stepInfo.displayStep} OF ${stepInfo.totalSteps} CLEARED`}
+                      : `CHECKPOINT ${stepInfo.displayStep} OF 6 CLEARED`}
                 </span>
-                <span className="r2-tracker-meta">{stepInfo.totalSteps - (stepInfo.displayStep || 0)} to Final</span>
+                <span className="r2-tracker-meta">{Math.max(0, 6 - (stepInfo.displayStep || 0))} to Final</span>
               </div>
             </div>
 
@@ -331,15 +336,15 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
                 ></div>
               </div>
 
-              {nodes.map((idx) => {
-                const isFinal = idx === totalNodes - 1;
-                const isDone = uiState === 'complete' || idx < stepInfo.displayStep;
-                const isActive = uiState !== 'complete' && idx === stepInfo.displayStep;
+              {[0, 1, 2, 3, 4, 5, 6].map((idx) => {
+                const isDone = uiState === 'complete' || idx < (stepInfo.displayStep || 0);
+                const isActive = uiState !== 'complete' && idx === (stepInfo.displayStep || 0);
+                const isFinal = idx === 6;
 
                 let nodeClass = 'r2-node-circle';
                 if (isDone) nodeClass += ' done';
                 else if (isActive) nodeClass += ' active';
-                if (isFinal) nodeClass += ' fountain-node';
+                if (isFinal) nodeClass += ' final-node';
 
                 return (
                   <div key={idx} className="r2-node-wrapper">
@@ -347,7 +352,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
                       {isDone ? '✓' : isFinal ? '🏆' : idx === 0 ? '✦' : idx}
                     </div>
                     <span className={`r2-node-label ${isActive ? 'active-label' : ''}`}>
-                      {isFinal ? 'VAULT' : idx === 0 ? 'START' : `CP ${idx}`}
+                      {idx === 0 ? 'START' : `CP ${idx}`}
                     </span>
                   </div>
                 );
@@ -432,17 +437,17 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
         {uiState === 'transit' && (
           <div className="r2-transit-card">
             <div className="r2-transit-badge">
-              <span>✓</span> {stepInfo.displayStep === 0 ? 'TRIAL UNLOCKED!' : `CHECKPOINT ${stepInfo.displayStep} OF ${stepInfo.totalSteps} CLEARED!`}
+              <span>✓</span> {(stepInfo.displayStep || 0) === 0 ? 'TRIAL UNLOCKED!' : `CHECKPOINT ${stepInfo.displayStep} OF 6 CLEARED!`}
             </div>
 
             <div className="r2-dest-spotlight" style={{ padding: '2.5rem 2rem' }}>
               <p className="r2-dest-kicker" style={{ color: '#f0d089', marginBottom: '1.2rem', letterSpacing: '0.1em' }}>
-                {stepInfo.displayStep === 0 ? 'FIND YOUR FIRST CHECKPOINT' : 'GUESS YOUR NEXT DESTINATION'}
+                {(stepInfo.displayStep || 0) === 0 ? 'SOLVE THIS TO FIND YOUR FIRST CHECKPOINT' : 'SOLVE THIS TO FIND YOUR NEXT DESTINATION'}
               </p>
               
               {/* Destination Riddle Display */}
               {nextRiddle ? (
-                <div className="r2-riddle-parchment th-card" style={{ marginTop: 0, marginBottom: '2rem' }}>
+                <div className="r2-riddle-parchment th-card" style={{ marginTop: 0, marginBottom: '1.5rem' }}>
                   <span className="corner tl"></span>
                   <span className="corner tr"></span>
                   <span className="corner bl"></span>
@@ -455,10 +460,20 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
                 <h2 className="r2-dest-name">{nextDest}</h2>
               )}
               
-              <p className="r2-dest-instruction" style={{ opacity: 0.9 }}>
-                Guess the location, sprint there immediately with your squad, and search for the hidden QR seal to scan!
+              <p className="r2-dest-instruction" style={{ opacity: 0.95, color: '#f0d089', fontSize: '1.05rem', margin: '1rem 0 0 0' }}>
+                Decipher the destination charm and sprint there with your squad — our Order's Station Volunteers await your arrival!
               </p>
             </div>
+
+            {/* Volunteer Presence Guidance Box - Only shown on the final checkpoint */}
+            {((stepInfo.displayStep || 0) >= 6 || stepInfo.remainingSteps <= 1) && (
+              <div className="r2-action-guidance" style={{ marginTop: '1.2rem', background: 'rgba(240, 208, 137, 0.08)', border: '1px solid rgba(240, 208, 137, 0.25)', borderRadius: '10px', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span className="r2-guidance-icon" style={{ fontSize: '1.6rem' }}>🧙‍♂️</span>
+                <p className="r2-guidance-text" style={{ margin: 0, fontSize: '0.94rem', color: '#fef3c7', lineHeight: '1.5' }}>
+                  When you arrive at <strong>the enchanted location</strong>, locate our <strong>Order Volunteers & Marshals</strong> stationed there. Approach them to reveal the <strong>hidden round</strong>!
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -466,13 +481,13 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
         {uiState === 'complete' && (
           <div className="r2-complete-card">
             <div className="r2-trophy-aura">🏆</div>
-            <h2 className="r2-complete-title">ALL RIDDLES SOLVED!</h2>
+            <h2 className="r2-complete-title">ALL RIDDLES CONQUERED!</h2>
             <p className="r2-complete-sub" style={{ color: '#ffd700', fontSize: '1.2rem', fontWeight: 800, letterSpacing: '0.04em' }}>
-              ✦ SPRINT TO THE FOUNTAIN RIGHT NOW ✦
+              ✦ SPRINT TO THE FINAL DESTINATION RIGHT NOW ✦
             </p>
             <p className="r2-complete-desc">
               You have conquered all checkpoints and solved every keeper's riddle!
-              The championship race is yours — sprint to the Fountain as fast as you can to claim victory!
+              The championship race is yours — sprint to the final station as fast as you can to claim victory!
               Report your arrival to the tournament marshals at the finish line.
             </p>
             <button className="r2-btn-gold" onClick={onBackToHall}>RETURN TO GREAT HALL</button>

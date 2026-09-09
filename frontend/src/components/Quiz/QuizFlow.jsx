@@ -91,37 +91,53 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
     saveQuizState(quizState);
   }, [quizState]);
 
-  // Auto-detect if logged in participant already qualified for Round 2
+  // Auto-detect if logged in participant already qualified for Round 2 or completed Round 1
   useEffect(() => {
     const token = quizState.participant?.token || localStorage.getItem('R2_Token');
     if (!token) return;
     let isMounted = true;
 
-    async function checkRound2Active() {
+    async function checkStatusAndStage() {
       try {
-        const res = await fetch(`${API_BASE_URL}/round2/current`, {
+        // 1. Try checking Round 2 directly
+        const r2Res = await fetch(`${API_BASE_URL}/round2/current`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (res.ok && isMounted) {
-          const data = await res.json();
-          if (data && (data.state === 'PENDING_SOLVE' || data.state === 'TRANSIT' || data.state === 'COMPLETE')) {
+        if (r2Res.ok && isMounted) {
+          const r2Data = await r2Res.json();
+          if (r2Data && (r2Data.state === 'PENDING_SOLVE' || r2Data.state === 'TRANSIT' || r2Data.state === 'COMPLETE')) {
             const currentHash = window.location.hash.replace(/^#\/?/, '');
             if (!currentHash || currentHash === 'login' || currentHash === 'round-1') {
               setQuizState((prev) => ({ ...prev, stage: 'round-2-play' }));
               navigateStage('round-2-play');
+              return;
             }
           }
-        } else if (isMounted) {
-          // Team is NOT qualified for Round 2 (e.g. event reset or in Round 1)
-          setQuizState((prev) => {
-            if (prev.stage === 'round-2-play' || prev.stage === 'round-2-rules' || prev.stage === 'results') {
-              return { ...prev, stage: 'round-1', result: null };
+        }
+
+        // 2. Also check /api/questions to see if already submitted
+        const qRes = await fetch(`${API_BASE_URL}/questions`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (qRes.ok && isMounted) {
+          const qData = await qRes.json();
+          if (qData && (qData.roundStatus === 'ALREADY_SUBMITTED' || qData.alreadySubmitted)) {
+            const currentHash = window.location.hash.replace(/^#\/?/, '');
+            if (qData.result === 'QUALIFIED') {
+              if (!currentHash || currentHash === 'login' || currentHash === 'round-1') {
+                setQuizState((prev) => ({ ...prev, stage: 'round-2-play' }));
+                navigateStage('round-2-play');
+              }
+            } else if (qData.result === 'COMPLETED_NOT_QUALIFIED') {
+              if (!currentHash || currentHash === 'login' || currentHash === 'round-1') {
+                setQuizState((prev) => ({ 
+                  ...prev, 
+                  stage: 'results', 
+                  result: { result: qData.result, rank: qData.rank } 
+                }));
+                navigateStage('results');
+              }
             }
-            return prev;
-          });
-          const currentHash = window.location.hash.replace(/^#\/?/, '');
-          if (currentHash === 'round-2' || currentHash === 'round2' || currentHash === 'results') {
-            navigateStage('round-1');
           }
         }
       } catch (err) {
@@ -129,7 +145,7 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
       }
     }
 
-    checkRound2Active();
+    checkStatusAndStage();
     return () => { isMounted = false; };
   }, [quizState.participant?.token, navigateStage]);
 
@@ -160,6 +176,34 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
 
   // Login handler: Checks if participant has active Round 2 before defaulting to Round 1
   const handleLoginSuccess = async (participantData) => {
+    // 1. Direct check from login metadata
+    if (participantData?.isQualified || participantData?.suggestedStage === 'round-2') {
+      setQuizState((prev) => ({
+        ...prev,
+        participant: participantData,
+        stage: 'round-2-play',
+      }));
+      navigateStage('round-2-play');
+      if (onTriggerToast) onTriggerToast('✦ ROUND 1 CLEARED · WELCOME TO ROUND 2 ✦');
+      return;
+    }
+
+    if (participantData?.suggestedStage === 'results') {
+      setQuizState((prev) => ({
+        ...prev,
+        participant: participantData,
+        stage: 'results',
+        result: {
+          result: participantData.submissionStatus || 'COMPLETED_NOT_QUALIFIED',
+          rank: participantData.rank
+        }
+      }));
+      navigateStage('results');
+      if (onTriggerToast) onTriggerToast('✦ ROUND 1 SUBMISSION COMPLETED ✦');
+      return;
+    }
+
+    // 2. Fallback check against /round2/current
     try {
       const res = await fetch(`${API_BASE_URL}/round2/current`, {
         headers: { Authorization: `Bearer ${participantData.token}` }
@@ -181,6 +225,7 @@ export default function QuizFlow({ onExitToGreatHall, onTriggerToast }) {
       console.warn('Could not verify Round 2 state upon login', e);
     }
 
+    // 3. Default to Round 1
     setQuizState((prev) => ({
       ...prev,
       participant: participantData,

@@ -47,21 +47,28 @@ export default function Round1View({
   const [hintCharacter, setHintCharacter] = useState('harry'); // 'harry' | 'voldy'
 
   // Device & Proctoring Violation States
+  const teamKey = participant?.teamId || 'TEAM';
+  const mountTimeRef = React.useRef(Date.now());
   const [isMobileDevice, setIsMobileDevice] = useState(false);
   const [hasAcceptedRules, setHasAcceptedRules] = useState(() => {
     return sessionStorage.getItem('r1_rules_accepted') === 'true';
   });
   const [proctorWarnings, setProctorWarnings] = useState(() => {
-    return parseInt(sessionStorage.getItem('r1_proctor_warnings') || '0', 10);
+    const stored = localStorage.getItem(`r1_warnings_${teamKey}`) || sessionStorage.getItem('r1_proctor_warnings');
+    return parseInt(stored || '0', 10);
   });
   const [activeWarningModal, setActiveWarningModal] = useState(null); // null | { count, isFinal, isLocked, title, message }
   const [isQuizLocked, setIsQuizLocked] = useState(() => {
-    return parseInt(sessionStorage.getItem('r1_proctor_warnings') || '0', 10) >= 3;
+    const isLocked = localStorage.getItem(`r1_locked_${teamKey}`) === 'true';
+    const storedWarnings = parseInt(localStorage.getItem(`r1_warnings_${teamKey}`) || sessionStorage.getItem('r1_proctor_warnings') || '0', 10);
+    return isLocked || storedWarnings >= 3;
   });
 
   // Auto-clear scratchpad, warnings, and accepted rules whenever round is reset/WAITING
   useEffect(() => {
     if (roundStatus === 'WAITING') {
+      localStorage.removeItem(`r1_warnings_${teamKey}`);
+      localStorage.removeItem(`r1_locked_${teamKey}`);
       sessionStorage.removeItem('r1_answers');
       sessionStorage.removeItem('r1_final_code');
       sessionStorage.removeItem('r1_proctor_warnings');
@@ -73,7 +80,7 @@ export default function Round1View({
       setHasAcceptedRules(false);
       setCurrentIdx(0);
     }
-  }, [roundStatus]);
+  }, [roundStatus, teamKey]);
 
   // Check if screen is not a laptop/desktop (< 960px or mobile touch agent)
   useEffect(() => {
@@ -129,9 +136,11 @@ export default function Round1View({
 
       setProctorWarnings((prev) => {
         const nextCount = prev + 1;
+        localStorage.setItem(`r1_warnings_${teamKey}`, nextCount.toString());
         sessionStorage.setItem('r1_proctor_warnings', nextCount.toString());
 
         if (nextCount >= 3) {
+          localStorage.setItem(`r1_locked_${teamKey}`, 'true');
           setIsQuizLocked(true);
           setActiveWarningModal({
             count: 3,
@@ -181,7 +190,8 @@ export default function Round1View({
       );
       setIsFullscreen(isFS);
 
-      if (!isFS) {
+      // Only trigger violation after initial mount grace window (2.5s)
+      if (!isFS && Date.now() - mountTimeRef.current > 2500) {
         triggerViolation('fullscreen_exit');
       }
     };
@@ -201,7 +211,7 @@ export default function Round1View({
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
-  }, [roundStatus, hasAcceptedRules, isQuizLocked]);
+  }, [roundStatus, hasAcceptedRules, isQuizLocked, teamKey]);
 
   // Close hint bubble & randomly pick Harry or Voldy when switching questions
   useEffect(() => {
@@ -236,6 +246,17 @@ export default function Round1View({
         const data = await fetchQuestionsApi(participant.token);
         if (!isMounted) return;
         
+        // If team already submitted Round 1, immediately redirect to Round 2 or Results!
+        if (data.roundStatus === 'ALREADY_SUBMITTED' || data.alreadySubmitted) {
+          if (data.result === 'QUALIFIED') {
+            window.location.hash = '#/round-2';
+            return;
+          } else {
+            window.location.hash = '#/results';
+            return;
+          }
+        }
+
         setError('');
         setRoundStatus(data.roundStatus || 'WAITING');
         setTimeRemaining(data.timeRemaining || 0);
@@ -768,6 +789,46 @@ export default function Round1View({
               {!isQ11 ? (
                 <>
                   <h2 className="qtext" style={{ whiteSpace: 'pre-wrap' }}>{currentQ?.text || 'Loading trial...'}</h2>
+
+                  {/* Admin-Activated Clue / Hint Box */}
+                  {currentQ?.hint && (
+                    <div style={{
+                      marginTop: '1.5rem',
+                      padding: '1.2rem 1.4rem',
+                      background: 'linear-gradient(135deg, rgba(240, 208, 137, 0.12), rgba(212, 160, 23, 0.06))',
+                      border: '1px solid rgba(240, 208, 137, 0.4)',
+                      borderRadius: '10px',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '14px',
+                      boxShadow: '0 4px 20px rgba(240, 208, 137, 0.15)',
+                      animation: 'fadeIn 0.4s ease-out'
+                    }}>
+                      <span style={{ fontSize: '1.6rem', lineHeight: '1', color: '#f0d089', flexShrink: 0 }}>📜</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <strong style={{ color: '#f0d089', fontSize: '0.95rem', letterSpacing: '0.06em', fontFamily: 'var(--quiz-font-display)' }}>
+                            ✦ HEADMASTER'S CLUE · HINT UNLOCKED
+                          </strong>
+                          <span style={{ 
+                            background: 'rgba(56, 239, 125, 0.2)', 
+                            color: '#38ef7d', 
+                            fontSize: '10px', 
+                            padding: '2px 7px', 
+                            borderRadius: '10px', 
+                            fontWeight: 'bold',
+                            border: '1px solid rgba(56, 239, 125, 0.4)'
+                          }}>
+                            LIVE
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, color: '#fef3c7', fontSize: '0.96rem', lineHeight: '1.5' }}>
+                          {currentQ.hint}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="opts-group" style={{ marginTop: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <label style={{ color: '#ccc', margin: 0, display: 'block', fontSize: '13px', letterSpacing: '0.04em' }}>Your Answer (Scratchpad):</label>
@@ -989,9 +1050,26 @@ export default function Round1View({
                         setCurrentIdx(idx);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      title={`Key ${idx + 1}`}
+                      title={`Key ${idx + 1}${q.hint ? ' (💡 Hint Unlocked)' : ''}`}
+                      style={{ position: 'relative' }}
                     >
                       K{idx + 1}
+                      {q.hint && (
+                        <span 
+                          style={{
+                            position: 'absolute',
+                            top: '-3px',
+                            right: '-3px',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: '#ffd700',
+                            boxShadow: '0 0 8px #ffd700',
+                            border: '1px solid #fff'
+                          }}
+                          title="Admin Hint Active"
+                        />
+                      )}
                     </button>
                   );
                 })}

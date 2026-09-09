@@ -100,10 +100,37 @@ app.post('/api/login', async (req, res) => {
     return res.status(401).json({ error: 'Invalid Team ID or Password' });
   }
 
+  // Check team submission status
+  const { data: sub } = await supabase
+    .from('submissions')
+    .select('status, rank')
+    .eq('team_id', teamId.toUpperCase())
+    .maybeSingle();
+
+  let suggestedStage = 'round-1';
+  let submissionStatus = null;
+  let isQualified = false;
+  let rank = null;
+
+  if (sub) {
+    submissionStatus = sub.status;
+    rank = sub.rank;
+    if (sub.status === 'QUALIFIED') {
+      isQualified = true;
+      suggestedStage = 'round-2';
+    } else {
+      suggestedStage = 'results';
+    }
+  }
+
   res.json({
     message: 'Login successful',
     token: data.session.access_token, // JWT to send in future requests
-    teamId: teamId
+    teamId: teamId.toUpperCase(),
+    submissionStatus,
+    isQualified,
+    rank,
+    suggestedStage
   });
 });
 
@@ -133,6 +160,25 @@ app.get('/api/questions', authenticate, async (req, res) => {
   const teamNum = parseInt(req.team.team_id.replace('TH-', ''), 10);
 
   const { data: config } = await supabase.from('round_config').select('*').eq('id', 1).single();
+
+  // Check if team already submitted
+  const { data: existingSub } = await supabase
+    .from('submissions')
+    .select('*')
+    .eq('team_id', req.team.team_id)
+    .maybeSingle();
+
+  if (existingSub) {
+    return res.json({
+      roundStatus: 'ALREADY_SUBMITTED',
+      alreadySubmitted: true,
+      result: existingSub.status,
+      rank: existingSub.rank,
+      timeRemaining: 0,
+      questions: [],
+      q11: "SUBMISSION SEALED"
+    });
+  }
 
   if (config.status !== 'ACTIVE') {
     return res.json({
@@ -188,8 +234,18 @@ app.post('/api/submit', authenticate, async (req, res) => {
     .single();
 
   if (existing) {
-    if (existing.status === 'QUALIFIED') return res.json({ result: 'ALREADY_QUALIFIED', rank: existing.rank });
-    return res.json({ result: 'COMPLETED_NOT_QUALIFIED', rank: existing.rank });
+    if (existing.status === 'QUALIFIED') {
+      return res.json({
+        result: 'ALREADY_QUALIFIED',
+        rank: existing.rank,
+        message: 'ROUND 1 CLEARED · YOU HAVE QUALIFIED FOR ROUND 2'
+      });
+    }
+    return res.json({
+      result: 'COMPLETED_NOT_QUALIFIED',
+      rank: existing.rank,
+      message: 'YOU MUGGLES WERE TOO SLOW FOR ROUND 2!'
+    });
   }
 
   if (code.toUpperCase() !== req.team.correct_code) {
@@ -226,8 +282,68 @@ app.post('/api/submit', authenticate, async (req, res) => {
   res.json({
     result: status,
     rank,
-    message: status === 'QUALIFIED' ? 'ROUND 1 CLEARED' : 'ROUND 1 COMPLETED - Not Qualified'
+    message: status === 'QUALIFIED'
+      ? 'ROUND 1 CLEARED · YOU HAVE QUALIFIED FOR ROUND 2'
+      : 'YOU MUGGLES WERE TOO SLOW FOR ROUND 2!'
   });
+});
+
+// ------------------------------------------------------------------
+// ROUND 1 LIVE LEADERBOARD API
+// ------------------------------------------------------------------
+const HOUSES = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'];
+
+app.get(['/api/leaderboard', '/api/round1/leaderboard'], async (req, res) => {
+  try {
+    const { data: submissions, error } = await supabase
+      .from('submissions')
+      .select('rank, status, submitted_at, team_id, teams!inner(team_name)')
+      .order('rank', { ascending: true });
+
+    if (error) {
+      // Fallback query if join has any syntax nuance
+      const { data: fallbackSubs, error: fbErr } = await supabase
+        .from('submissions')
+        .select('*')
+        .order('rank', { ascending: true });
+
+      if (fbErr) return res.status(500).json({ error: fbErr.message, leaderboard: [] });
+
+      const { data: allTeams } = await supabase.from('teams').select('team_id, team_name');
+      const teamMap = {};
+      (allTeams || []).forEach(t => { teamMap[t.team_id] = t.team_name; });
+
+      const leaderboard = (fallbackSubs || []).map(s => {
+        const teamNum = parseInt((s.team_id || '').replace(/\D/g, '') || '0', 10);
+        return {
+          rank: s.rank,
+          teamId: s.team_id,
+          name: teamMap[s.team_id] || s.team_id,
+          house: HOUSES[teamNum % 4],
+          status: s.status,
+          submittedAt: s.submitted_at
+        };
+      });
+
+      return res.json({ leaderboard });
+    }
+
+    const leaderboard = (submissions || []).map(s => {
+      const teamNum = parseInt((s.team_id || '').replace(/\D/g, '') || '0', 10);
+      return {
+        rank: s.rank,
+        teamId: s.team_id,
+        name: s.teams?.team_name || s.team_id,
+        house: HOUSES[teamNum % 4],
+        status: s.status,
+        submittedAt: s.submitted_at
+      };
+    });
+
+    res.json({ leaderboard });
+  } catch (err) {
+    res.status(500).json({ error: err.message, leaderboard: [] });
+  }
 });
 
 
@@ -313,7 +429,7 @@ app.post('/api/admin/reset', authenticateAdmin, async (req, res) => {
 
   // 2. Delete all submissions to give a clean slate
   await supabase.from('submissions').delete().neq('team_id', 'none');
-
+  
   // 3. Reset all Round 2 assignments and progress logs
   await supabase.from('round2_team_assignments').update({ current_step: 0, state: 'PENDING_SOLVE', current_question_id: null }).neq('team_id', 'none');
   await supabase.from('round2_progress').delete().neq('team_id', 'none');
@@ -342,13 +458,16 @@ app.get('/api/admin/round2/status', authenticateAdmin, async (req, res) => {
   }
 
   const enriched = (assignments || []).map(a => {
-    const checkpoints = a.round2_paths?.checkpoints || [];
+    const checkpoints = a.round2_paths ? a.round2_paths.checkpoints : [];
     const currentDestId = checkpoints[a.current_step] || null;
     return {
-      ...a,
+      team_id: a.team_id,
+      team_name: a.teams ? a.teams.team_name : a.team_id,
+      current_step: a.current_step,
+      state: a.state,
       current_dest_id: currentDestId,
-      current_dest_name: currentDestId ? (destMap[currentDestId] || currentDestId) : 'Conquered',
-      destMap
+      current_dest_name: destMap[currentDestId] || 'Unknown',
+      total_checkpoints: checkpoints.length
     };
   });
 
@@ -366,7 +485,7 @@ app.post('/api/admin/round2/reset', authenticateAdmin, async (req, res) => {
 
   await supabase.from('round2_progress').delete().neq('team_id', 'none');
 
-  res.json({ message: 'Round 2 has been reset to starting state (Initial Cipher Riddle).' });
+  res.json({ message: 'Round 2 has been reset to starting state (Initial Destination Riddle).' });
 });
 // ------------------------------------------------------------------
 // ROUND 2 APIs
@@ -385,7 +504,7 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
     .maybeSingle();
 
   if (!sub) {
-    return res.status(403).json({ error: 'Team has not qualified for Round 2 yet.', qualified: false });
+    return res.status(403).json({ error: 'YOU MUGGLES WERE TOO SLOW FOR ROUND 2! Only the top 20 teams qualify.', qualified: false });
   }
 
   const { data: assignment, error } = await supabase
@@ -434,7 +553,7 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
   if (assignment.state === 'TRANSIT') {
     return res.json({
       state: 'TRANSIT',
-      nextDestination: targetDest ? targetDest.name : 'Next Checkpoint',
+      nextDestination: 'Enchanted Outpost',
       nextRiddle: DESTINATION_RIDDLES[targetDestId] || null,
       currentStep: currentStep,
       displayStep: displayStep,
@@ -508,7 +627,7 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
     .maybeSingle();
 
   if (!sub) {
-    return res.status(403).json({ error: 'Team has not qualified for Round 2 yet.' });
+    return res.status(403).json({ error: 'YOU MUGGLES WERE TOO SLOW FOR ROUND 2! Only the top 20 teams qualify.' });
   }
 
   const { data: assignment } = await supabase
@@ -523,8 +642,9 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
 
   const { data: qData } = await supabase.from('round2_questions').select('*').eq('id', assignment.current_question_id).single();
 
-  const cleanDbAnswer = (qData?.correct_answer || '').trim().toLowerCase();
-  const cleanUserAnswer = (answer || '').trim().toLowerCase();
+  const normalize = (str) => (str || '').toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanDbAnswer = normalize(qData?.correct_answer);
+  const cleanUserAnswer = normalize(answer);
 
   if (!qData || cleanDbAnswer !== cleanUserAnswer) {
     return res.status(400).json({ error: 'Incorrect answer. Please try again.' });
@@ -566,8 +686,8 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
 
     return res.json({
       state: 'COMPLETE',
-      message: 'All checkpoints conquered! Sprint to the Fountain!',
-      finalDestination: currentDest ? currentDest.name : 'Fountain',
+      message: 'All checkpoints conquered! Sprint to the Final Destination!',
+      finalDestination: 'Final Destination',
       currentStep: totalSteps,
       totalSteps: totalSteps,
       stepNumber: totalSteps,
@@ -583,12 +703,11 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
   }).eq('team_id', teamId);
 
   const nextDestId = checkpoints[nextStep];
-  const { data: nextDest } = await supabase.from('round2_destinations').select('name').eq('id', nextDestId).single();
 
   res.json({
     success: true,
     state: 'TRANSIT',
-    nextDestination: nextDest ? nextDest.name : 'Next Checkpoint',
+    nextDestination: 'Enchanted Outpost',
     nextRiddle: DESTINATION_RIDDLES[nextDestId] || null,
     currentStep: nextStep,
     displayStep: nextStep,
@@ -614,7 +733,7 @@ app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
     .maybeSingle();
 
   if (!sub) {
-    return res.status(403).json({ error: 'Team has not qualified for Round 2 yet.' });
+    return res.status(403).json({ error: 'YOU MUGGLES WERE TOO SLOW FOR ROUND 2! Only the top 20 teams qualify.' });
   }
 
   const { data: dest } = await supabase.from('round2_destinations').select('*').eq('qr_identifier', qrCode).single();
@@ -632,12 +751,51 @@ app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
     return res.status(400).json({ error: 'Event already completed.' });
   }
 
+  // Squad must solve and submit their active question before scanning any checkpoint QR
+  if (assignment.state === 'PENDING_SOLVE') {
+    return res.status(400).json({
+      error: 'ACTIVE QUESTION PENDING: You must solve and submit your current trial cipher before scanning a checkpoint!'
+    });
+  }
+
   const checkpoints = assignment.round2_paths.checkpoints;
   const expectedDestId = checkpoints[assignment.current_step];
 
   if (dest.id !== expectedDestId) {
+    const expectedRiddle = DESTINATION_RIDDLES[expectedDestId] || null;
     return res.status(400).json({
-      error: `WRONG LOCATION! You scanned "${dest.name}", which is incorrect. You must solve the destination riddle and sprint to the correct campus landmark!`
+      error: 'WRONG CHECKPOINT SEAL SCANNED! This is not your assigned outpost. Decipher your active riddle below and sprint to the correct location!',
+      riddle: expectedRiddle,
+      currentStep: assignment.current_step,
+      totalSteps: checkpoints.length
+    });
+  }
+
+  const isFinalCheckpoint = (assignment.current_step + 1) >= checkpoints.length;
+
+  if (isFinalCheckpoint) {
+    // Final destination (Fountain) reached and scanned! Mark event COMPLETE!
+    await supabase
+      .from('round2_team_assignments')
+      .update({ state: 'COMPLETE', current_step: checkpoints.length, current_question_id: null })
+      .eq('team_id', teamId);
+
+    await supabase.from('round2_progress').insert({
+      team_id: teamId,
+      destination_id: dest.id,
+      step_no: checkpoints.length
+    });
+
+    return res.json({
+      state: 'COMPLETE',
+      message: `CONGRATULATIONS! You conquered all checkpoints and reached ${dest.name}!`,
+      currentStep: checkpoints.length,
+      displayStep: checkpoints.length,
+      totalSteps: checkpoints.length,
+      stepNumber: checkpoints.length,
+      remainingSteps: 0,
+      arrivedDestination: dest.name,
+      currentDestination: dest.name
     });
   }
 

@@ -73,6 +73,10 @@ export default function LoginView({ onLoginSuccess, onBackToHall, onTriggerToast
         name: cleanName,
         teamId: response.teamId || cleanId.toUpperCase(),
         token: response.token,
+        isQualified: response.isQualified,
+        submissionStatus: response.submissionStatus,
+        rank: response.rank,
+        suggestedStage: response.suggestedStage,
         loggedInAt: Date.now(),
       });
     } catch (err) {

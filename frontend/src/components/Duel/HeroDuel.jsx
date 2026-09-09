@@ -50,85 +50,17 @@ export default function HeroDuel({ onScrollToExams }) {
     lastT: 0,
   });
 
-  // Background cut-out algorithm with fast-path for pre-cut transparent WebP assets
+  // Optimized mobile check
+  const isMobileDevice = typeof window !== 'undefined' && (
+    window.innerWidth < 768 ||
+    (typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent))
+  );
+
+  // Background cut-out algorithm: immediately pass transparent WebP assets without canvas parsing
   const processCutout = (imgEl) => {
     if (!imgEl) return;
-    if (
-      imgEl.src.includes('.webp') ||
-      imgEl.dataset.cutoutDone === 'true' ||
-      imgEl.classList.contains('processed')
-    ) {
-      imgEl.classList.add('processed', 'show');
-      return;
-    }
+    imgEl.classList.add('processed', 'show');
     imgEl.dataset.cutoutDone = 'true';
-    try {
-      const c = document.createElement('canvas');
-      c.width = imgEl.naturalWidth;
-      c.height = imgEl.naturalHeight;
-      const ctx = c.getContext('2d', { willReadFrequently: true });
-      if (!ctx) return;
-      ctx.drawImage(imgEl, 0, 0);
-
-      const w = c.width;
-      const h = c.height;
-      const imgData = ctx.getImageData(0, 0, w, h);
-      const d = imgData.data;
-      const vis = new Uint8Array(w * h);
-      const stack = new Int32Array(w * h);
-      let sp = 0;
-
-      const bgLike = (i) => {
-        const r = d[i],
-          g = d[i + 1],
-          b = d[i + 2];
-        return 0.299 * r + 0.587 * g + 0.114 * b < 32;
-      };
-
-      const push = (p) => {
-        if (!vis[p]) {
-          vis[p] = 1;
-          stack[sp++] = p;
-        }
-      };
-
-      for (let i = 0; i < w; i++) {
-        push(i);
-        push((h - 1) * w + i);
-      }
-      for (let j = 0; j < h; j++) {
-        push(j * w);
-        push(j * w + w - 1);
-      }
-
-      while (sp > 0) {
-        const p = stack[--sp];
-        const i4 = p * 4;
-        if (d[i4 + 3] === 0) continue;
-        if (!bgLike(i4)) {
-          vis[p] = 0;
-          continue;
-        }
-        d[i4 + 3] = 0;
-        const pxx = p % w;
-        const pyy = (p / w) | 0;
-        if (pxx > 0) push(p - 1);
-        if (pxx < w - 1) push(p + 1);
-        if (pyy > 0) push(p - w);
-        if (pyy < h - 1) push(p + w);
-      }
-
-      ctx.putImageData(imgData, 0, 0);
-      c.toBlob((blob) => {
-        if (blob) {
-          imgEl.src = URL.createObjectURL(blob);
-          imgEl.classList.add('processed');
-        }
-        imgEl.classList.add('show');
-      });
-    } catch (e) {
-      imgEl.classList.add('show');
-    }
   };
 
   const getTipPos = (tipEl, isHarry = true) => {
@@ -178,7 +110,8 @@ export default function HeroDuel({ onScrollToExams }) {
 
   const burst = (x, y, cols, count, pow = 1) => {
     const ds = duelState.current;
-    for (let i = 0; i < count; i++) {
+    const actualCount = isMobileDevice ? Math.min(count, 18) : count;
+    for (let i = 0; i < actualCount; i++) {
       const angle = Math.random() * 6.28;
       const v = pow * (1 + Math.random() * 4);
       ds.parts.push({
@@ -187,8 +120,8 @@ export default function HeroDuel({ onScrollToExams }) {
         vx: Math.cos(angle) * v,
         vy: Math.sin(angle) * v - 1,
         life: 0,
-        max: 50 + Math.random() * 40,
-        r: 1 + Math.random() * 2.6,
+        max: isMobileDevice ? 28 : (50 + Math.random() * 40),
+        r: 1 + Math.random() * 2.4,
         c: cols[i % cols.length],
         g: 0.05,
       });
@@ -197,15 +130,15 @@ export default function HeroDuel({ onScrollToExams }) {
 
   const converge = (x, y, color) => {
     const angle = Math.random() * 6.28;
-    const dist = 50 + Math.random() * 50;
+    const dist = 40 + Math.random() * 40;
     duelState.current.parts.push({
       x: x + Math.cos(angle) * dist,
       y: y + Math.sin(angle) * dist,
       tx: x,
       ty: y,
       life: 0,
-      max: 26,
-      r: 1 + Math.random() * 1.8,
+      max: isMobileDevice ? 18 : 26,
+      r: 1 + Math.random() * 1.6,
       c: color,
       conv: true,
     });
@@ -227,11 +160,13 @@ export default function HeroDuel({ onScrollToExams }) {
       lp.x,
       lp.y,
       ['#fff0c8', '#f0d089', '#ff5d47', '#43e08a', '#ffffff'],
-      140,
+      isMobileDevice ? 40 : 140,
       2.4
     );
     ds.rings.push({ x: lp.x, y: lp.y, r: 6, v: 9, a: 1, c: '240,208,137' });
-    ds.rings.push({ x: lp.x, y: lp.y, r: 2, v: 6, a: 1, c: '255,255,255' });
+    if (!isMobileDevice) {
+      ds.rings.push({ x: lp.x, y: lp.y, r: 2, v: 6, a: 1, c: '255,255,255' });
+    }
 
     setTimeout(() => {
       setVictoryState({
@@ -253,7 +188,7 @@ export default function HeroDuel({ onScrollToExams }) {
       target === 'harry'
         ? ['#ff5d47', '#ffb46a', '#fff0c8']
         : ['#43e08a', '#b6ffd9', '#eafff4'],
-      36,
+      isMobileDevice ? 16 : 36,
       1.4
     );
 
@@ -323,7 +258,7 @@ export default function HeroDuel({ onScrollToExams }) {
     const convergeInterval = setInterval(() => {
       const p = getTipPos(tip, side === 'harry');
       converge(p.x, p.y, color);
-    }, 30);
+    }, isMobileDevice ? 60 : 30);
 
     setTimeout(() => {
       clearInterval(convergeInterval);
@@ -332,7 +267,7 @@ export default function HeroDuel({ onScrollToExams }) {
 
       ds.shots.push({ side, t: 0 });
       ds.busy[side] = false;
-    }, 500);
+    }, 450);
   };
 
   const handleBattleAgain = () => {
@@ -346,9 +281,9 @@ export default function HeroDuel({ onScrollToExams }) {
     setHasCast(false);
   };
 
-  // 3D Tilt and Spark binding on hover
+  // 3D Tilt and Spark binding on hover (desktop only)
   const setupWizardInteractions = (el, isHarry) => {
-    if (!el) return;
+    if (!el || isMobileDevice) return;
     const onEnter = () => {
       const r = el.getBoundingClientRect();
       spawnSparks(
@@ -405,45 +340,62 @@ export default function HeroDuel({ onScrollToExams }) {
     const canvas = canvasRef.current;
     const hero = heroRef.current;
     if (!canvas || !hero) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
     if (!ctx) return;
 
     let W = 0,
       H = 0;
     const ds = duelState.current;
+    const isMobile = window.innerWidth < 768;
 
-    // Generate stars
+    // Generate stars budget adapted for device performance
+    const starCount = isMobile ? 22 : 60;
     ds.stars = [];
-    for (let si = 0; si < 150; si++) {
+    for (let si = 0; si < starCount; si++) {
       ds.stars.push({
         x: Math.random(),
         y: Math.random() * 0.6,
-        r: Math.random() * 1.3 + 0.3,
+        r: Math.random() * 1.2 + 0.3,
         p: Math.random() * 6.28,
-        s: 0.6 + Math.random() * 1.6,
+        s: 0.6 + Math.random() * 1.5,
       });
     }
 
     let ro = null;
+    let io = null;
     let rafDouble = 0;
-    let currentDPR = window.devicePixelRatio || 1;
-    let dprQuery = null;
+    let isVisible = true;
+    let animId = null;
+    let tipA = { x: 0, y: 0 };
+    let tipB = { x: 0, y: 0 };
+
+    const updateTipCoords = () => {
+      tipA = getTipPos(tipHRef.current, true);
+      tipB = getTipPos(tipVRef.current, false);
+    };
 
     const syncCanvasSize = () => {
-      const DPR = Math.min(window.devicePixelRatio || 1, 2);
-      currentDPR = DPR;
+      const DPR = Math.min(window.devicePixelRatio || 1, isMobile ? 1.15 : 1.5);
       const rect = hero.getBoundingClientRect();
-      const newW = Math.round(rect.width) || hero.clientWidth;
-      const newH = Math.round(rect.height) || hero.clientHeight;
+      const newW = Math.round(rect.width) || hero.clientWidth || window.innerWidth;
+      const newH = Math.round(rect.height) || hero.clientHeight || window.innerHeight;
       if (!newW || !newH) return;
+
+      // Avoid recreating buffer for tiny mobile URL bar height shifts
       if (
-        newW === W &&
-        newH === H &&
-        canvas.width === Math.round(newW * DPR) &&
-        canvas.height === Math.round(newH * DPR)
+        W > 0 &&
+        Math.abs(newW - W) < 2 &&
+        Math.abs(newH - H) < 65 &&
+        canvas.width > 0
       ) {
+        W = newW;
+        H = newH;
+        canvas.style.width = `${W}px`;
+        canvas.style.height = `${H}px`;
+        updateTipCoords();
         return;
       }
+
       W = newW;
       H = newH;
       canvas.width = Math.round(W * DPR);
@@ -451,79 +403,111 @@ export default function HeroDuel({ onScrollToExams }) {
       canvas.style.width = `${W}px`;
       canvas.style.height = `${H}px`;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      updateTipCoords();
     };
 
-    const resize = () => syncCanvasSize();
-
-    const handleDprChange = () => {
-      resize();
-      listenToDpr();
+    let resizeTimer = null;
+    const debouncedResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        syncCanvasSize();
+      }, 60);
     };
 
-    const listenToDpr = () => {
-      if (dprQuery) {
-        dprQuery.removeEventListener('change', handleDprChange);
-      }
-      dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
-      dprQuery.addEventListener('change', handleDprChange, { once: true });
-    };
-    listenToDpr();
-
-    // Initial sync + double rAF to catch fonts/images/dvh layout shift
-    resize();
+    // Initial sync
+    syncCanvasSize();
     rafDouble = requestAnimationFrame(() => {
-      resize();
-      rafDouble = requestAnimationFrame(resize);
+      syncCanvasSize();
+      rafDouble = requestAnimationFrame(syncCanvasSize);
     });
 
     if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(resize);
+      ro = new ResizeObserver(debouncedResize);
       ro.observe(hero);
     }
 
-    window.addEventListener('resize', resize);
-    const vv = window.visualViewport;
-    if (vv) vv.addEventListener('resize', resize);
+    window.addEventListener('resize', debouncedResize, { passive: true });
+    window.addEventListener('orientationchange', debouncedResize, { passive: true });
 
     if (document.fonts?.ready) {
-      document.fonts.ready.then(resize);
+      document.fonts.ready.then(syncCanvasSize);
     }
 
     const handlePointerMove = (e) => {
+      if (isMobile) return;
       ds.mx = e.clientX / window.innerWidth - 0.5;
       ds.my = e.clientY / window.innerHeight - 0.5;
     };
-    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    if (!isMobile) {
+      window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    }
 
     const lerp = (a, b, t) => a + (b - a) * t;
 
-    let animId;
+    let tipUpdateTick = 0;
+    const maxEmbers = isMobile ? 6 : 14;
+
+    const startLoop = () => {
+      if (!animId && isVisible) {
+        animId = requestAnimationFrame(loop);
+      }
+    };
+
+    const stopLoop = () => {
+      if (animId) {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
+    };
+
+    // IntersectionObserver to halt 60fps canvas execution when scrolled offscreen
+    if (typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(
+        ([entry]) => {
+          isVisible = entry.isIntersecting;
+          if (isVisible) {
+            startLoop();
+          } else {
+            stopLoop();
+          }
+        },
+        { threshold: 0.02 }
+      );
+      io.observe(hero);
+    }
+
     const loop = (t) => {
+      if (!isVisible) {
+        animId = null;
+        return;
+      }
+
       const dt = Math.min(32, t - ds.lastT) || 16;
       ds.lastT = t;
-      // Guard against missed resize or zoom/DPI change
-      const hr = hero.getBoundingClientRect();
-      const checkDPR = Math.min(window.devicePixelRatio || 1, 2);
-      if (
-        Math.abs(hr.width - W) > 0.5 ||
-        Math.abs(hr.height - H) > 0.5 ||
-        Math.abs(checkDPR - currentDPR) > 0.01
-      ) {
-        syncCanvasSize();
+
+      // Periodically refresh tip positions (every ~30 frames) without running getBoundingClientRect every frame
+      tipUpdateTick++;
+      if (tipUpdateTick > 30) {
+        tipUpdateTick = 0;
+        updateTipCoords();
       }
+
       ctx.clearRect(0, 0, W, H);
 
-      ds.px += (ds.mx - ds.px) * 0.04;
-      ds.py += (ds.my - ds.py) * 0.04;
+      // Parallax updates (desktop only)
+      if (!isMobile) {
+        ds.px += (ds.mx - ds.px) * 0.04;
+        ds.py += (ds.my - ds.py) * 0.04;
 
-      if (bgCastleRef.current) {
-        bgCastleRef.current.style.transform = `translate3d(${-ds.px * 22}px, ${-ds.py * 12}px, 0) scale(1.06)`;
-      }
-      if (fogARef.current) {
-        fogARef.current.style.transform = `translate3d(${-ds.px * 36}px, ${-ds.py * 14}px, 0)`;
-      }
-      if (fogBRef.current) {
-        fogBRef.current.style.transform = `translate3d(${ds.px * 46}px, ${ds.py * 18}px, 0)`;
+        if (bgCastleRef.current) {
+          bgCastleRef.current.style.transform = `translate3d(${-ds.px * 16}px, ${-ds.py * 10}px, 0) scale(1.04)`;
+        }
+        if (fogARef.current) {
+          fogARef.current.style.transform = `translate3d(${-ds.px * 24}px, ${-ds.py * 10}px, 0)`;
+        }
+        if (fogBRef.current) {
+          fogBRef.current.style.transform = `translate3d(${ds.px * 30}px, ${ds.py * 12}px, 0)`;
+        }
       }
 
       // Draw stars
@@ -539,14 +523,14 @@ export default function HeroDuel({ onScrollToExams }) {
       ctx.globalAlpha = 1;
 
       // Draw drifting embers
-      if (ds.embers.length < 34 && Math.random() < 0.25) {
+      if (ds.embers.length < maxEmbers && Math.random() < 0.18) {
         ds.embers.push({
           x: Math.random() * W,
           y: H + 8,
           vy: -(0.35 + Math.random() * 0.8),
           vx: (Math.random() - 0.5) * 0.4,
           p: Math.random() * 6.28,
-          r: 0.8 + Math.random() * 1.6,
+          r: 0.8 + Math.random() * 1.5,
         });
       }
       for (let i = ds.embers.length - 1; i >= 0; i--) {
@@ -559,22 +543,19 @@ export default function HeroDuel({ onScrollToExams }) {
         }
         ctx.globalAlpha = 0.5 + 0.4 * Math.sin(t / 300 + e.p);
         ctx.fillStyle = '#f0d089';
-        ctx.shadowColor = '#f0d089';
-        ctx.shadowBlur = 8;
         ctx.beginPath();
         ctx.arc(e.x, e.y, e.r, 0, 6.28);
         ctx.fill();
-        ctx.shadowBlur = 0;
       }
       ctx.globalAlpha = 1;
 
       // Beam and clash orb
-      const a = getTipPos(tipHRef.current, true);
-      const b = getTipPos(tipVRef.current, false);
+      const a = tipA.x > 0 ? tipA : { x: W * 0.2, y: H * 0.65 };
+      const b = tipB.x > 0 ? tipB : { x: W * 0.8, y: H * 0.65 };
 
       ds.orbT += (ds.orbTarget - ds.orbT) * 0.045;
       const ox = lerp(a.x, b.x, ds.orbT);
-      const oy = lerp(a.y, b.y, ds.orbT) + Math.sin(t / 900) * 6;
+      const oy = lerp(a.y, b.y, ds.orbT) + Math.sin(t / 900) * 5;
 
       // Outer beam
       const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
@@ -584,82 +565,76 @@ export default function HeroDuel({ onScrollToExams }) {
       g.addColorStop(1, 'rgba(67,224,138,.9)');
 
       ctx.strokeStyle = g;
-      ctx.lineWidth = 5;
-      ctx.globalAlpha = 0.22;
-      ctx.shadowColor = '#fff';
-      ctx.shadowBlur = 16;
+      ctx.lineWidth = isMobile ? 3.5 : 4.5;
+      ctx.globalAlpha = 0.32;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
 
       // Inner core beam
-      ctx.lineWidth = 1.6;
-      ctx.globalAlpha = 0.8;
-      ctx.shadowBlur = 6;
+      ctx.lineWidth = isMobile ? 1.2 : 1.5;
+      ctx.globalAlpha = 0.85;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
-      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
 
       // Traveling beads along the beam
-      for (let i = 0; i < 6; i++) {
-        const q = (t * 0.00028 + i / 6) % 1;
+      const beadCount = isMobile ? 3 : 4;
+      for (let i = 0; i < beadCount; i++) {
+        const q = (t * 0.00028 + i / beadCount) % 1;
         const p1x = lerp(a.x, ox, q);
         const p1y = lerp(a.y, oy, q);
         const p2x = lerp(b.x, ox, q);
         const p2y = lerp(b.y, oy, q);
 
-        ctx.fillStyle = `rgba(255,150,100,${0.7 * Math.sin(q * Math.PI)})`;
-        ctx.shadowColor = '#ff8a50';
-        ctx.shadowBlur = 10;
+        ctx.fillStyle = `rgba(255,150,100,${0.75 * Math.sin(q * Math.PI)})`;
         ctx.beginPath();
-        ctx.arc(p1x, p1y, 2.2, 0, 6.28);
+        ctx.arc(p1x, p1y, 1.8, 0, 6.28);
         ctx.fill();
 
-        ctx.fillStyle = `rgba(110,255,170,${0.7 * Math.sin(q * Math.PI)})`;
-        ctx.shadowColor = '#43e08a';
+        ctx.fillStyle = `rgba(110,255,170,${0.75 * Math.sin(q * Math.PI)})`;
         ctx.beginPath();
-        ctx.arc(p2x, p2y, 2.2, 0, 6.28);
+        ctx.arc(p2x, p2y, 1.8, 0, 6.28);
         ctx.fill();
-        ctx.shadowBlur = 0;
       }
 
       // Tip glow
       const drawTipGlow = (p, col) => {
-        const rg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 26);
+        const rg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, isMobile ? 16 : 22);
         rg.addColorStop(0, 'rgba(255,255,255,.9)');
-        rg.addColorStop(0.3, col);
+        rg.addColorStop(0.35, col);
         rg.addColorStop(1, 'transparent');
         ctx.fillStyle = rg;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 26, 0, 6.28);
+        ctx.arc(p.x, p.y, isMobile ? 16 : 22, 0, 6.28);
         ctx.fill();
       };
       drawTipGlow(a, 'rgba(255,110,70,.55)');
       drawTipGlow(b, 'rgba(67,224,138,.5)');
 
-      // Central clash orb & sparkle (enlarged & enhanced)
+      // Central clash orb & sparkle
       ds.orbPulse *= 0.92;
-      const R = 22 + Math.sin(t / 280) * 3.5 + ds.orbPulse * 15;
+      const baseR = isMobile ? 15 : 20;
+      const R = baseR + Math.sin(t / 280) * 2.8 + ds.orbPulse * 10;
       ctx.globalCompositeOperation = 'lighter';
 
-      const rgL = ctx.createRadialGradient(ox - R * 0.55, oy, 0, ox - R * 0.55, oy, R * 2.5);
+      const rgL = ctx.createRadialGradient(ox - R * 0.55, oy, 0, ox - R * 0.55, oy, R * 2);
       rgL.addColorStop(0, 'rgba(255,110,70,.6)');
       rgL.addColorStop(1, 'transparent');
       ctx.fillStyle = rgL;
       ctx.beginPath();
-      ctx.arc(ox - R * 0.55, oy, R * 2.5, 0, 6.28);
+      ctx.arc(ox - R * 0.55, oy, R * 2, 0, 6.28);
       ctx.fill();
 
-      const rgR = ctx.createRadialGradient(ox + R * 0.55, oy, 0, ox + R * 0.55, oy, R * 2.5);
+      const rgR = ctx.createRadialGradient(ox + R * 0.55, oy, 0, ox + R * 0.55, oy, R * 2);
       rgR.addColorStop(0, 'rgba(67,224,138,.55)');
       rgR.addColorStop(1, 'transparent');
       ctx.fillStyle = rgR;
       ctx.beginPath();
-      ctx.arc(ox + R * 0.55, oy, R * 2.5, 0, 6.28);
+      ctx.arc(ox + R * 0.55, oy, R * 2, 0, 6.28);
       ctx.fill();
 
       const rgC = ctx.createRadialGradient(ox, oy, 0, ox, oy, R);
@@ -686,23 +661,26 @@ export default function HeroDuel({ onScrollToExams }) {
       ctx.quadraticCurveTo(0, 0, 0, -starR);
       ctx.fill();
 
-      // Secondary diagonal sparkle
-      const starR2 = starR * 0.58;
-      ctx.rotate(0.785);
-      ctx.fillStyle = 'rgba(255, 235, 180, 0.75)';
-      ctx.beginPath();
-      ctx.moveTo(0, -starR2);
-      ctx.quadraticCurveTo(0, 0, starR2, 0);
-      ctx.quadraticCurveTo(0, 0, 0, starR2);
-      ctx.quadraticCurveTo(0, 0, -starR2, 0);
-      ctx.quadraticCurveTo(0, 0, 0, -starR2);
-      ctx.fill();
+      if (!isMobile) {
+        // Secondary diagonal sparkle on desktop
+        const starR2 = starR * 0.55;
+        ctx.rotate(0.785);
+        ctx.fillStyle = 'rgba(255, 235, 180, 0.7)';
+        ctx.beginPath();
+        ctx.moveTo(0, -starR2);
+        ctx.quadraticCurveTo(0, 0, starR2, 0);
+        ctx.quadraticCurveTo(0, 0, 0, starR2);
+        ctx.quadraticCurveTo(0, 0, -starR2, 0);
+        ctx.quadraticCurveTo(0, 0, 0, -starR2);
+        ctx.fill();
+      }
       ctx.restore();
 
       // Ambient clash micro-sparks emitting from the clash center
-      if (Math.random() < 0.32 && ds.parts.length < 85) {
+      const maxSparks = isMobile ? 18 : 45;
+      if (Math.random() < 0.25 && ds.parts.length < maxSparks) {
         const spAngle = Math.random() * 6.28;
-        const spSpd = 1.0 + Math.random() * 2.4;
+        const spSpd = 1.0 + Math.random() * 2.0;
         const spCol = Math.random() < 0.5 ? '#ffb46a' : '#7dffb8';
         ds.parts.push({
           x: ox,
@@ -710,8 +688,8 @@ export default function HeroDuel({ onScrollToExams }) {
           vx: Math.cos(spAngle) * spSpd,
           vy: Math.sin(spAngle) * spSpd - 0.2,
           life: 0,
-          max: 18 + Math.random() * 16,
-          r: 1.2 + Math.random() * 1.8,
+          max: isMobile ? 14 : (16 + Math.random() * 12),
+          r: 1.1 + Math.random() * 1.4,
           c: spCol,
           g: 0.03,
         });
@@ -722,33 +700,35 @@ export default function HeroDuel({ onScrollToExams }) {
       // Animated spell shots
       for (let i = ds.shots.length - 1; i >= 0; i--) {
         const sh = ds.shots[i];
-        sh.t += dt / 650;
+        sh.t += dt / 600;
         const from = sh.side === 'harry' ? a : b;
         const to = sh.side === 'harry' ? b : a;
         const tt = Math.min(1, sh.t);
         const ex = lerp(from.x, to.x, tt);
-        const ey = lerp(from.y, to.y, tt) + Math.sin(tt * Math.PI) * -26;
+        const ey = lerp(from.y, to.y, tt) + Math.sin(tt * Math.PI) * -22;
         const col = sh.side === 'harry' ? '255,140,90' : '110,255,170';
 
-        ds.parts.push({
-          x: ex,
-          y: ey,
-          vx: (Math.random() - 0.5) * 0.8,
-          vy: (Math.random() - 0.5) * 0.8,
-          life: 0,
-          max: 22,
-          r: 1.4,
-          c: `rgba(${col},.8)`,
-          g: 0,
-        });
+        if (ds.parts.length < maxSparks) {
+          ds.parts.push({
+            x: ex,
+            y: ey,
+            vx: (Math.random() - 0.5) * 0.6,
+            vy: (Math.random() - 0.5) * 0.6,
+            life: 0,
+            max: isMobile ? 14 : 18,
+            r: 1.2,
+            c: `rgba(${col},.8)`,
+            g: 0,
+          });
+        }
 
-        const pg = ctx.createRadialGradient(ex, ey, 0, ex, ey, 20);
+        const pg = ctx.createRadialGradient(ex, ey, 0, ex, ey, isMobile ? 14 : 18);
         pg.addColorStop(0, '#ffffff');
         pg.addColorStop(0.35, `rgba(${col},.9)`);
         pg.addColorStop(1, 'transparent');
         ctx.fillStyle = pg;
         ctx.beginPath();
-        ctx.arc(ex, ey, 20, 0, 6.28);
+        ctx.arc(ex, ey, isMobile ? 14 : 18, 0, 6.28);
         ctx.fill();
 
         if (sh.t >= 1) {
@@ -762,8 +742,8 @@ export default function HeroDuel({ onScrollToExams }) {
         const p = ds.parts[i];
         p.life++;
         if (p.conv) {
-          p.x += (p.tx - p.x) * 0.14;
-          p.y += (p.ty - p.y) * 0.14;
+          p.x += (p.tx - p.x) * 0.16;
+          p.y += (p.ty - p.y) * 0.16;
         } else {
           p.x += p.vx * dt * 0.06;
           p.y += p.vy * dt * 0.06;
@@ -793,25 +773,32 @@ export default function HeroDuel({ onScrollToExams }) {
           continue;
         }
         ctx.strokeStyle = `rgba(${r.c},${r.a})`;
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = isMobile ? 1.8 : 2.2;
         ctx.beginPath();
         ctx.arc(r.x, r.y, r.r, 0, 6.28);
         ctx.stroke();
       }
 
-      animId = requestAnimationFrame(loop);
+      if (isVisible) {
+        animId = requestAnimationFrame(loop);
+      } else {
+        animId = null;
+      }
     };
 
-    animId = requestAnimationFrame(loop);
+    startLoop();
 
     return () => {
-      window.removeEventListener('resize', resize);
-      if (vv) vv.removeEventListener('resize', resize);
-      if (dprQuery) dprQuery.removeEventListener('change', handleDprChange);
+      window.removeEventListener('resize', debouncedResize);
+      window.removeEventListener('orientationchange', debouncedResize);
       if (ro) ro.disconnect();
+      if (io) io.disconnect();
+      if (resizeTimer) clearTimeout(resizeTimer);
       cancelAnimationFrame(rafDouble);
-      window.removeEventListener('pointermove', handlePointerMove);
-      cancelAnimationFrame(animId);
+      if (!isMobile) {
+        window.removeEventListener('pointermove', handlePointerMove);
+      }
+      stopLoop();
     };
   }, []);
 

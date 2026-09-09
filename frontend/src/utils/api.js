@@ -80,3 +80,20 @@ export async function submitCodeApi(token, code) {
   }
   return data;
 }
+
+/**
+ * Fetch live Round 1 leaderboard standings.
+ * @returns {Promise<{leaderboard: Array}>}
+ */
+export async function fetchLeaderboardApi() {
+  const response = await fetch(`${API_BASE_URL}/leaderboard`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  const data = await parseResponse(response);
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to fetch leaderboard');
+  }
+  return data;
+}
+

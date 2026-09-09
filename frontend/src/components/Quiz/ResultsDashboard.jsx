@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { INITIAL_LEADERBOARD } from './QuizData';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { spawnSparks } from '../../utils/sparks';
+import { fetchLeaderboardApi } from '../../utils/api';
 
 export default function ResultsDashboard({
   participant,
@@ -13,12 +13,33 @@ export default function ResultsDashboard({
 }) {
   const [houseFilter, setHouseFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [serverLeaderboard, setServerLeaderboard] = useState([]);
+  const [isLoadingLb, setIsLoadingLb] = useState(false);
 
   const statusString = result.result || 'UNKNOWN';
   const isQualified = statusString === 'QUALIFIED' || statusString === 'ALREADY_QUALIFIED';
   const isIncorrect = statusString === 'INCORRECT';
   const isExpired = statusString === 'TIME_EXPIRED';
   const displayMessage = result.message || 'Status Unknown';
+
+  // Fetch live tournament standings from backend
+  const loadLiveLeaderboard = useCallback(async () => {
+    try {
+      const data = await fetchLeaderboardApi();
+      if (data && Array.isArray(data.leaderboard)) {
+        setServerLeaderboard(data.leaderboard);
+      }
+    } catch (err) {
+      console.warn('Could not fetch live leaderboard:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLiveLeaderboard();
+    // Poll every 5 seconds to get live submissions
+    const interval = setInterval(loadLiveLeaderboard, 5000);
+    return () => clearInterval(interval);
+  }, [loadLiveLeaderboard]);
 
   // Celebratory magical sparks on qualification
   useEffect(() => {
@@ -35,43 +56,56 @@ export default function ResultsDashboard({
     }
   }, [isQualified]);
 
-  // Combined leaderboard with current player's submission inserted
+  // Combined leaderboard with server data + current player's submission
   const fullLeaderboard = useMemo(() => {
-    const list = [...INITIAL_LEADERBOARD];
+    const list = [...serverLeaderboard];
     const userRank = rank || result.rank || 999;
+    const currentTeamId = participant?.teamId || '';
 
-    // Insert user entry into ranking list if qualified or completed
-    if (!isIncorrect && !isExpired) {
-        const userEntry = {
-          rank: userRank,
-          name: participant.name,
-          teamId: participant.teamId,
-          house: 'Gryffindor', // Defaulting for visual mock
-          score: isQualified ? 1 : 0, 
-          total: 1,
-          time: 'N/A', // Time from backend can be added later
-          status: isQualified ? 'QUALIFIED' : 'STANDBY',
-          isCurrentUser: true,
-        };
-        list.push(userEntry);
+    // Check if current user is already in server results
+    const existingIndex = list.findIndex((item) => item.teamId === currentTeamId);
+
+    if (existingIndex !== -1) {
+      // Mark as current user
+      list[existingIndex] = {
+        ...list[existingIndex],
+        isCurrentUser: true,
+      };
+    } else if (!isIncorrect && !isExpired && currentTeamId) {
+      // Optimistically insert user entry if just submitted
+      const teamNum = parseInt(currentTeamId.replace(/\D/g, '') || '0', 10);
+      const HOUSES = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'];
+      const userEntry = {
+        rank: userRank,
+        name: participant?.name || currentTeamId,
+        teamId: currentTeamId,
+        house: HOUSES[teamNum % 4],
+        status: isQualified ? 'QUALIFIED' : 'COMPLETED_NOT_QUALIFIED',
+        isCurrentUser: true,
+      };
+      list.push(userEntry);
     }
 
-    list.sort((a, b) => {
-      return a.rank - b.rank;
-    });
-
-    // Re-index ranks cleanly
-    return list.map((item, idx) => ({
+    // Mark isCurrentUser flag for all items
+    const formattedList = list.map((item) => ({
       ...item,
-      displayRank: idx + 1,
+      isCurrentUser: item.teamId === currentTeamId,
     }));
-  }, [participant, result, rank, isQualified, isIncorrect, isExpired]);
+
+    formattedList.sort((a, b) => (a.rank || 999) - (b.rank || 999));
+
+    // Assign displayRank
+    return formattedList.map((item, idx) => ({
+      ...item,
+      displayRank: item.rank || idx + 1,
+    }));
+  }, [serverLeaderboard, participant, result, rank, isQualified, isIncorrect, isExpired]);
 
   const filteredLeaderboard = fullLeaderboard.filter((item) => {
     const matchesHouse = houseFilter === 'All' || item.house === houseFilter;
     const matchesSearch =
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.teamId.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.teamId || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesHouse && matchesSearch;
   });
 
@@ -106,30 +140,45 @@ export default function ResultsDashboard({
 
             {/* Middle: Title, Details */}
             <div className="sb-mid-col">
-              <h2 className="sb-headline" style={{ fontSize: '1.8rem', color: isQualified ? '#43e08a' : '#f0d089' }}>
-                {displayMessage}
+              <h2
+                className="sb-headline"
+                style={{
+                  fontSize: '1.8rem',
+                  color: isQualified ? '#43e08a' : isIncorrect ? '#ff5d47' : '#f0d089',
+                  textTransform: 'uppercase'
+                }}
+              >
+                {isQualified
+                  ? (displayMessage || 'ROUND 1 CLEARED · QUALIFIED FOR ROUND 2')
+                  : isIncorrect
+                  ? 'CODEWORD INCORRECT'
+                  : isExpired
+                  ? 'ROUND 1 TIME EXPIRED'
+                  : 'YOU MUGGLES WERE TOO SLOW FOR ROUND 2!'}
               </h2>
 
-              <p className="sb-details" style={{ fontSize: '1.1rem', marginTop: '0.8rem', color: '#ccc' }}>
-                {isQualified && 'Outstanding! You have cracked the code and unlocked the gate.'}
-                {isIncorrect && 'The codeword was incorrect. Please try again if time allows.'}
+              <p className="sb-details" style={{ fontSize: '1.1rem', marginTop: '0.8rem', color: '#cbd4f0' }}>
+                {isQualified && 'Outstanding! You are among the Top 20 squads and have unlocked Round 2.'}
+                {isIncorrect && 'The codeword was incorrect. Please verify your letter arithmetic and try again.'}
                 {isExpired && 'Time has expired. The vault is sealed.'}
-                {!isQualified && !isIncorrect && !isExpired && 'The Vault Stays Sealed.'}
+                {!isQualified && !isIncorrect && !isExpired && 'Only the Top 20 squads advance to Round 2. All 20 qualification slots have been claimed by faster wizards!'}
               </p>
             </div>
 
             {/* Right: Grade Stamp & Rank Plaque */}
             <div className="sb-right-col">
               <div className={`grade-stamp ${isQualified ? 'pass' : 'fail'}`}>
-                <b className="stamp-letter">{isQualified ? 'O' : 'T'}</b>
-                <span className="stamp-label">{isQualified ? 'OUTSTANDING' : 'PENDING'}</span>
+                <b className="stamp-letter">{isQualified ? 'O' : isIncorrect ? 'P' : 'M'}</b>
+                <span className="stamp-label">
+                  {isQualified ? 'OUTSTANDING' : isIncorrect ? 'POOR' : 'TOO SLOW'}
+                </span>
               </div>
 
               {(!isIncorrect && !isExpired) && (
-                  <div className="rank-plaque">
-                    <span className="plaque-label">YOUR RANK</span>
-                    <b className="plaque-num">#{rank || result.rank || '—'}</b>
-                  </div>
+                <div className="rank-plaque">
+                  <span className="plaque-label">YOUR RANK</span>
+                  <b className="plaque-num">#{rank || result.rank || '—'}</b>
+                </div>
               )}
             </div>
           </div>
@@ -152,14 +201,30 @@ export default function ResultsDashboard({
               ← RETRY QUESTION 11
             </button>
           )}
-          {isQualified && (
-              <button
-                type="button"
-                className="btn-gold"
-                onClick={onProceedToRound2}
-              >
-                MOVE TO ROUND 2&nbsp;✦
-              </button>
+          {isQualified ? (
+            <button
+              type="button"
+              className="btn-gold"
+              onClick={onProceedToRound2}
+            >
+              MOVE TO ROUND 2&nbsp;✦
+            </button>
+          ) : !isIncorrect && !isExpired && (
+            <div
+              style={{
+                padding: '10px 22px',
+                borderRadius: '999px',
+                border: '1px solid rgba(255, 93, 71, 0.4)',
+                background: 'rgba(255, 93, 71, 0.12)',
+                color: '#ff8a70',
+                fontFamily: 'var(--cinzel)',
+                fontSize: '12px',
+                letterSpacing: '0.15em',
+                fontWeight: '700'
+              }}
+            >
+              ✦ ROUND 2 LOCKED · TOP 20 QUALIFIERS ONLY ✦
+            </div>
           )}
           <button
             type="button"
@@ -227,41 +292,49 @@ export default function ResultsDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLeaderboard.map((team) => {
-                    const isTop1 = team.displayRank === 1;
-                    const isTop2 = team.displayRank === 2;
-                    const isTop3 = team.displayRank === 3;
+                  {filteredLeaderboard.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: '#9aa3c0', fontStyle: 'italic' }}>
+                        No teams found on the leaderboard yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredLeaderboard.map((team) => {
+                      const isTop1 = team.displayRank === 1;
+                      const isTop2 = team.displayRank === 2;
+                      const isTop3 = team.displayRank === 3;
 
-                    return (
-                      <tr
-                        key={`${team.teamId}-${team.displayRank}`}
-                        className={`${team.isCurrentUser ? 'current-user-row' : ''}`}
-                      >
-                        <td className="rank-cell">
-                          {isTop1 ? '#1 ✦' : isTop2 ? '#2' : isTop3 ? '#3' : `#${team.displayRank}`}
-                        </td>
-                        <td className="name-cell">
-                          <b>{team.name}</b>
-                          {team.isCurrentUser && <span className="you-tag">YOU</span>}
-                          <small>{team.teamId}</small>
-                        </td>
-                        <td>
-                          <span className={`house-pill house-${team.house.toLowerCase()}`}>
-                            {team.house}
-                          </span>
-                        </td>
-                        <td>
-                          <span
-                            className={`status-chip ${
-                              team.status === 'QUALIFIED' ? 'qualified' : 'standby'
-                            }`}
-                          >
-                            {team.status === 'QUALIFIED' ? 'QUALIFIED ✦' : 'STANDBY'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      return (
+                        <tr
+                          key={`${team.teamId}-${team.displayRank}`}
+                          className={`${team.isCurrentUser ? 'current-user-row' : ''}`}
+                        >
+                          <td className="rank-cell">
+                            {isTop1 ? '#1 ✦' : isTop2 ? '#2' : isTop3 ? '#3' : `#${team.displayRank}`}
+                          </td>
+                          <td className="name-cell">
+                            <b>{team.name}</b>
+                            {team.isCurrentUser && <span className="you-tag">YOU</span>}
+                            <small>{team.teamId}</small>
+                          </td>
+                          <td>
+                            <span className={`house-pill house-${(team.house || 'gryffindor').toLowerCase()}`}>
+                              {team.house || 'Gryffindor'}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={`status-chip ${
+                                team.status === 'QUALIFIED' ? 'qualified' : 'standby'
+                              }`}
+                            >
+                              {team.status === 'QUALIFIED' ? 'QUALIFIED ✦' : 'STANDBY'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

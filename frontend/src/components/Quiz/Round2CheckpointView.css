@@ -220,11 +220,11 @@
   transform: scale(1.18);
 }
 
-.r2-node-circle.fountain-node {
+.r2-node-circle.final-node {
   border-color: rgba(240, 208, 137, 0.4);
 }
 
-.r2-node-circle.fountain-node.active {
+.r2-node-circle.final-node.active {
   background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
   color: #000;
   box-shadow: 0 0 22px rgba(255, 215, 0, 0.85);
@@ -284,7 +284,7 @@
 
 /* Push Banner Themes based on proximity */
 .r2-push-climax {
-  /* 1 checkpoint to go (Sprint to Fountain) */
+  /* 1 checkpoint to go (Sprint to Final Destination) */
   background: linear-gradient(135deg, rgba(255, 93, 71, 0.18) 0%, rgba(216, 171, 82, 0.22) 100%);
   border: 1.5px solid #ff7a59;
   box-shadow: 0 0 25px rgba(255, 93, 71, 0.35), inset 0 0 15px rgba(255, 122, 89, 0.15);
@@ -914,7 +914,7 @@
     box-shadow: 0 0 12px rgba(240, 208, 137, 0.7);
   }
 
-  .r2-node-circle.fountain-node.active {
+  .r2-node-circle.final-node.active {
     transform: scale(1.2);
   }
 

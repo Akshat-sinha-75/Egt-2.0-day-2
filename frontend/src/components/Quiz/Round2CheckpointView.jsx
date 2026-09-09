@@ -142,6 +142,34 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
     if (!codeToScan) return;
     setUiState('scanning');
     try {
+      // Verify team is not currently in PENDING_SOLVE before scanning
+      try {
+        const stateRes = await fetch(`${API_BASE_URL}/round2/current`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const stateData = await stateRes.json();
+        if (stateRes.ok && stateData.state === 'PENDING_SOLVE') {
+          if (stateData.currentStep !== undefined) {
+            setStepInfo({
+              currentStep: stateData.currentStep,
+              totalSteps: stateData.totalSteps || 7,
+              remainingSteps: stateData.remainingSteps !== undefined ? stateData.remainingSteps : Math.max(0, (stateData.totalSteps || 7) - stateData.currentStep),
+              stepNumber: stateData.currentStep,
+              displayStep: stateData.displayStep !== undefined ? stateData.displayStep : stateData.currentStep,
+              currentDestination: stateData.arrivedDestination || stateData.currentDestination || null,
+              arrivedDestination: stateData.arrivedDestination || stateData.currentDestination || null,
+              isInitialStart: stateData.currentStep === 0
+            });
+          }
+          setErrorMessage('ACTIVE TRIAL PENDING: You must solve and submit your starting cipher before checking in at any checkpoint!');
+          setUiState('error');
+          if (onTriggerToast) onTriggerToast('⛔ ACTIVE CIPHER PENDING: Solve your active trial first!');
+          return;
+        }
+      } catch (err) {
+        // Continue to scan if state check fails
+      }
+
       const res = await fetch(`${API_BASE_URL}/round2/scan_qr`, {
         method: 'POST',
         headers: { 
@@ -159,11 +187,26 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           setUiState('login');
           return;
         }
+        if (res.status === 403) {
+          setErrorMessage('YOU MUGGLES WERE TOO SLOW FOR ROUND 2! Only the top 20 qualifying teams can enter.');
+          setUiState('error');
+          if (onTriggerToast) onTriggerToast('⛔ YOU MUGGLES WERE TOO SLOW FOR ROUND 2!');
+          return;
+        }
 
         // Strictly show error — NEVER open question on wrong destination!
-        setErrorMessage(data.error || 'WRONG LOCATION: You must sprint to your assigned checkpoint.');
+        if (data?.riddle) {
+          setNextRiddle(data.riddle);
+        }
+        // Strict guard: Never display any scanned landmark name under any circumstances
+        const rawErr = (data?.error || '').toLowerCase();
+        let friendlyError = 'WRONG CHECKPOINT SEAL SCANNED! This is not your assigned outpost. Decipher your active riddle below and sprint to the correct location!';
+        if (data?.error && !rawErr.includes('scanned') && !rawErr.includes('"') && !rawErr.includes('location') && !rawErr.includes('incorrect')) {
+          friendlyError = data.error;
+        }
+        setErrorMessage(friendlyError);
         setUiState('error');
-        if (onTriggerToast) onTriggerToast(`⛔ ${data.error || 'WRONG LOCATION SCANNED'}`);
+        if (onTriggerToast) onTriggerToast(`⛔ ${friendlyError}`);
         return;
       }
 
@@ -210,6 +253,11 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           sessionStorage.removeItem('egt2_wizarding_hunt_v2');
           setToken(null);
           setUiState('login');
+          return;
+        }
+        if (res.status === 403) {
+          setErrorMessage('YOU MUGGLES WERE TOO SLOW FOR ROUND 2! Only the top 20 qualifying teams can enter.');
+          setUiState('error');
           return;
         }
         throw new Error(data.error || 'Failed to fetch status');
@@ -307,7 +355,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
         }
         spawnSparks(window.innerWidth / 2, window.innerHeight / 2, '#ffd700', 50);
         setUiState('complete');
-        if (onTriggerToast) onTriggerToast(' 🏆 ALL RIDDLES SOLVED! SPRINT TO THE FOUNTAIN! ');
+        if (onTriggerToast) onTriggerToast(' 🏆 ALL RIDDLES CONQUERED! SPRINT TO THE FINAL DESTINATION! ');
       } else {
         setNextDest(data.nextDestination);
         setNextRiddle(data.nextRiddle);
@@ -361,17 +409,17 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
               <span className="r2-roadmap-status">
                 <span className="star-dot">✦</span>
                 {uiState === 'complete' 
-                  ? `ALL ${stepInfo.totalSteps - 1} CHECKPOINTS COMPLETED!` 
-                  : stepInfo.displayStep === 0
-                  ? `STARTING TRIAL • ${stepInfo.totalSteps - 1} CHECKPOINTS TO GO`
-                  : `CHECKPOINT ${stepInfo.displayStep} OF ${stepInfo.totalSteps - 1} CLEARED`}
+                  ? 'ALL 6 CHECKPOINTS CLEARED!' 
+                  : (stepInfo.displayStep || 0) === 0
+                  ? 'STARTING TRIAL • 6 CHECKPOINTS TO GO'
+                  : `CHECKPOINT ${stepInfo.displayStep} OF 6 CLEARED`}
               </span>
               <span className="r2-roadmap-remaining">
                 {uiState === 'complete'
                   ? '✦ CHAMPION ✦'
-                  : stepInfo.remainingSteps === 1
+                  : (stepInfo.displayStep || 0) === 5
                   ? '✦ FINAL SPRINT NEXT ✦'
-                  : `${stepInfo.remainingSteps} to Final`}
+                  : `${Math.max(0, 6 - (stepInfo.displayStep || 0))} to Final`}
               </span>
             </div>
 
@@ -383,15 +431,15 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
                 ></div>
               </div>
 
-              {nodes.map((idx) => {
-                const isFinal = idx === totalNodes - 1;
-                const isDone = uiState === 'complete' || idx < stepInfo.displayStep;
-                const isActive = uiState !== 'complete' && idx === stepInfo.displayStep;
+              {[0, 1, 2, 3, 4, 5, 6].map((idx) => {
+                const isDone = uiState === 'complete' || idx < (stepInfo.displayStep || 0);
+                const isActive = uiState !== 'complete' && idx === (stepInfo.displayStep || 0);
+                const isFinal = idx === 6;
 
                 let nodeClass = 'r2-node-circle';
                 if (isDone) nodeClass += ' done';
                 else if (isActive) nodeClass += ' active';
-                if (isFinal) nodeClass += ' fountain-node';
+                if (isFinal) nodeClass += ' final-node';
 
                 return (
                   <div key={idx} className="r2-node-wrapper">
@@ -399,7 +447,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
                       {isDone ? '✓' : isFinal ? '🏆' : idx === 0 ? '✦' : idx}
                     </div>
                     <span className={`r2-node-label ${isActive ? 'active-label' : ''}`}>
-                      {isFinal ? 'VAULT' : idx === 0 ? 'START' : `CP ${idx}`}
+                      {idx === 0 ? 'START' : `CP ${idx}`}
                     </span>
                   </div>
                 );
@@ -468,16 +516,34 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
 
         {/* State 3: Error / Wrong Location Screen */}
         {uiState === 'error' && (
-          <div className="r2-error-box">
+          <div className="r2-error-box th-card" style={{ padding: '2rem 1.6rem', textAlign: 'center', maxWidth: '620px', margin: '0 auto' }}>
             <div className="r2-error-icon" style={{ color: '#ef4444', fontSize: '38px', marginBottom: '8px' }}>⛔</div>
-            <h3 className="r2-error-title" style={{ color: '#ff6b6b', letterSpacing: '1px' }}>
-              {errorMessage?.toLowerCase().includes('wrong location') ? 'WRONG LOCATION SCANNED' : 'CHECKPOINT NOTICE'}
+            <h3 className="r2-error-title" style={{ color: '#ff6b6b', letterSpacing: '1px', fontSize: '1.35rem', textTransform: 'uppercase', margin: '0 0 10px 0' }}>
+              CHECKPOINT NOTICE
             </h3>
-            <p className="r2-error-msg" style={{ fontSize: '1.05rem', color: '#f0d089', lineHeight: '1.55', fontWeight: 600 }}>
+            <p className="r2-error-msg" style={{ fontSize: '1.02rem', color: '#fca5a5', lineHeight: '1.55', fontWeight: 600, marginBottom: '1.4rem' }}>
               {errorMessage}
             </p>
 
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '1.4rem', flexWrap: 'wrap' }}>
+            {/* Active Riddle Scroll if present */}
+            {nextRiddle && (
+              <div style={{ marginTop: '1.2rem', textAlign: 'left' }}>
+                <p className="r2-dest-kicker" style={{ color: '#f0d089', marginBottom: '0.75rem', letterSpacing: '0.08em', fontSize: '0.88rem', textTransform: 'uppercase', textAlign: 'center', fontWeight: 700 }}>
+                  ✦ YOUR ASSIGNED DESTINATION ENIGMA ✦
+                </p>
+                <div className="r2-riddle-parchment th-card" style={{ marginTop: 0, marginBottom: '1.2rem', padding: '1.4rem' }}>
+                  <span className="corner tl"></span>
+                  <span className="corner tr"></span>
+                  <span className="corner bl"></span>
+                  <span className="corner br"></span>
+                  <p className="r2-riddle-text" style={{ fontSize: '1.08rem', fontStyle: 'italic', lineHeight: '1.6', color: '#f0d089', margin: 0, whiteSpace: 'pre-line' }}>
+                    {nextRiddle}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '1.6rem', flexWrap: 'wrap' }}>
               <button 
                 type="button" 
                 className="r2-btn-gold" 
@@ -486,7 +552,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
                   window.location.hash = '#/round-2';
                 }}
               >
-                VIEW TARGET DESTINATION 🧭
+                VIEW TRANSIT RADAR 🧭
               </button>
               <button 
                 type="button" 
@@ -562,7 +628,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
         {uiState === 'transit' && (
           <div className="r2-transit-card">
             <div className="r2-transit-badge">
-              <span>✓</span> {stepInfo.currentStep === 0 ? 'TRIAL UNLOCKED!' : `CHECKPOINT ${stepInfo.currentStep} OF ${stepInfo.totalSteps} CLEARED!`}
+              <span>✓</span> {(stepInfo.displayStep || 0) === 0 ? 'TRIAL UNLOCKED!' : `CHECKPOINT ${stepInfo.displayStep || stepInfo.currentStep} OF 6 CLEARED!`}
             </div>
 
             <div className="r2-dest-spotlight">
@@ -571,7 +637,7 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
               </div>
 
               <p className="r2-dest-kicker">
-                {stepInfo.currentStep === 0 ? 'SOLVE THIS TO FIND YOUR FIRST CHECKPOINT' : 'SOLVE THIS TO FIND YOUR NEXT DESTINATION'}
+                {(stepInfo.displayStep || 0) === 0 ? 'SOLVE THIS TO FIND YOUR FIRST CHECKPOINT' : 'SOLVE THIS TO FIND YOUR NEXT DESTINATION'}
               </p>
               
               {nextRiddle ? (
@@ -588,22 +654,25 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
                 <h2 className="r2-dest-name">{nextDest}</h2>
               )}
               
-              <p className="r2-dest-instruction" style={{ marginTop: '1.5rem' }}>
-                Guess the location, sprint there immediately with your squad, and scan the QR!
+              <p className="r2-dest-instruction" style={{ marginTop: '1.2rem', color: '#f0d089', opacity: 0.95, fontSize: '1.02rem' }}>
+                Decipher the destination charm and sprint there with your squad — our Order's Station Volunteers await your arrival!
               </p>
             </div>
 
-            <div className="r2-action-guidance">
-              <span className="r2-guidance-icon">📷</span>
-              <p className="r2-guidance-text">
-                When you arrive at <strong>the correct location</strong>, search for the hidden tournament QR seal and scan it with your device camera to log your arrival!
-              </p>
-            </div>
+            {/* Volunteer Presence Guidance Box - Only shown on the final checkpoint */}
+            {((stepInfo.displayStep || 0) >= 6 || stepInfo.remainingSteps <= 1) && (
+              <div className="r2-action-guidance" style={{ marginTop: '1.2rem', background: 'rgba(240, 208, 137, 0.08)', border: '1px solid rgba(240, 208, 137, 0.25)', borderRadius: '10px', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span className="r2-guidance-icon" style={{ fontSize: '1.6rem' }}>🧙‍♂️</span>
+                <p className="r2-guidance-text" style={{ margin: 0, fontSize: '0.94rem', color: '#fef3c7', lineHeight: '1.5' }}>
+                  When you arrive at <strong>the enchanted location</strong>, locate our <strong>Order Volunteers & Marshals</strong> stationed there. Approach them to reveal the <strong>hidden round</strong>!
+                </p>
+              </div>
+            )}
 
             <button 
               type="button" 
               className="r2-btn-ghost" 
-              style={{ width: '100%', marginTop: '0.8rem' }} 
+              style={{ width: '100%', marginTop: '1rem' }} 
               onClick={fetchCurrentState}
             >
               REFRESH STATUS ↻
@@ -611,17 +680,17 @@ export default function Round2CheckpointView({ onBackToHall, onTriggerToast }) {
           </div>
         )}
 
-        {/* State 6: Complete (Final Riddle Solved — Sprint to Fountain!) */}
+        {/* State 6: Complete (Final Riddle Solved — Sprint to Finish!) */}
         {uiState === 'complete' && (
           <div className="r2-complete-card">
             <div className="r2-trophy-aura">🏆</div>
-            <h2 className="r2-complete-title">ALL RIDDLES SOLVED!</h2>
+            <h2 className="r2-complete-title">ALL RIDDLES CONQUERED!</h2>
             <p className="r2-complete-sub" style={{ color: '#ffd700', fontSize: '1.2rem', fontWeight: 800, letterSpacing: '0.04em' }}>
-              ✦ SPRINT TO THE FOUNTAIN RIGHT NOW ✦
+              ✦ SPRINT TO THE FINAL DESTINATION RIGHT NOW ✦
             </p>
             <p className="r2-complete-desc">
               You have conquered all checkpoints and solved every keeper's riddle! 
-              The race is yours — sprint to the Fountain as fast as you can to claim victory!
+              The race is yours — sprint to the final station as fast as you can to claim victory!
               Report your arrival to the tournament marshals at the finish line.
             </p>
             {onBackToHall && (

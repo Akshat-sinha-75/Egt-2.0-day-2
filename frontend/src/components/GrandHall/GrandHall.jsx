@@ -373,14 +373,14 @@ export default function GrandHall() {
   useEffect(() => {
     const generated = [];
     const rand = (a, b) => a + Math.random() * (b - a);
-    for (let k = 0; k < 44; k++) {
+    for (let k = 0; k < 12; k++) {
       generated.push({
         id: k,
-        left: `${rand(1, 99)}%`,
-        top: `${rand(2, 62)}%`,
+        left: `${rand(2, 98)}%`,
+        top: `${rand(4, 58)}%`,
         animationDelay: `${-rand(0, 3)}s`,
-        opacity: rand(0.3, 0.9),
-        background: k % 4 === 0 ? '#f0d089' : '#e8ecff',
+        opacity: rand(0.3, 0.8),
+        background: k % 3 === 0 ? '#f0d089' : '#e8ecff',
       });
     }
     setStars(generated);
