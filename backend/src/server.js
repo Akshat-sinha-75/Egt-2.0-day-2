@@ -467,7 +467,9 @@ app.get('/api/admin/round2/status', authenticateAdmin, async (req, res) => {
       state: a.state,
       current_dest_id: currentDestId,
       current_dest_name: destMap[currentDestId] || 'Unknown',
-      total_checkpoints: checkpoints.length
+      total_checkpoints: checkpoints.length,
+      round2_paths: a.round2_paths,
+      destMap: destMap
     };
   });
 

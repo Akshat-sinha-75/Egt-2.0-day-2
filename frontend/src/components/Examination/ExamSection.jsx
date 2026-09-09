@@ -110,7 +110,7 @@ export default function ExamSection({ onTriggerToast, onStartQuiz }) {
         <h3>Test your wizarding knowledge.</h3>
         <ul className="exam-meta">
           <li>
-            <i>✦</i> 20 QUESTIONS
+            <i>✦</i> 10+1 QUESTIONS
           </li>
           <li>
             <i>✦</i> TIMED EXAMINATION

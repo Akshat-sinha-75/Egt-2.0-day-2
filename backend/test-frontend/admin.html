@@ -304,7 +304,7 @@
   </div>
 
   <script>
-    const BACKEND_URL = (typeof window !== 'undefined' && window.location.origin && window.location.origin.startsWith('http'))
+    const BACKEND_URL = (typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes(':3000') && !window.location.origin.includes(':5173') && window.location.origin.startsWith('http'))
       ? window.location.origin
       : 'http://localhost:3001';
 
@@ -728,7 +728,7 @@
           tr.innerHTML = `
             <td><strong>${a.team_id}</strong><br><small style="color:#aaa;">${a.teams?.team_name || ''}</small></td>
             <td><div class="path-flow">${pathHtml}</div></td>
-            <td><strong style="font-size: 15px; color:#fff;">Step ${a.current_step}</strong> / 7</td>
+            <td><strong style="font-size: 15px; color:#fff;">Step ${a.current_step}</strong> / 6</td>
             <td>${targetLandmark}</td>
             <td>${stateBadge}</td>
           `;
