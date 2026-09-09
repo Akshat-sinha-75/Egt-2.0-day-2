@@ -59,6 +59,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
   const [questionText, setQuestionText] = useState('');
   const [answerInput, setAnswerInput] = useState('');
   const [nextDest, setNextDest] = useState('');
+  const [nextRiddle, setNextRiddle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [stepInfo, setStepInfo] = useState({
@@ -118,6 +119,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
           totalSteps: data.totalSteps || 7,
           remainingSteps: data.remainingSteps !== undefined ? data.remainingSteps : Math.max(0, (data.totalSteps || 7) - data.currentStep),
           stepNumber: data.currentStep,
+          displayStep: data.displayStep !== undefined ? data.displayStep : data.currentStep,
           currentDestination: data.arrivedDestination || data.currentDestination || null,
           arrivedDestination: data.arrivedDestination || data.currentDestination || null,
           isInitialStart: data.currentStep === 0
@@ -129,6 +131,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
         setUiState('solving');
       } else if (data.state === 'TRANSIT') {
         setNextDest(data.nextDestination || 'Next Checkpoint');
+        setNextRiddle(data.nextRiddle || null);
         setUiState('transit');
       } else if (data.state === 'COMPLETE') {
         setUiState('complete');
@@ -179,6 +182,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
           totalSteps: data.totalSteps || 7,
           remainingSteps: data.remainingSteps !== undefined ? data.remainingSteps : Math.max(0, (data.totalSteps || 7) - data.currentStep),
           stepNumber: data.currentStep,
+          displayStep: data.displayStep !== undefined ? data.displayStep : data.currentStep,
           currentDestination: data.arrivedDestination || data.currentDestination || null,
           arrivedDestination: data.arrivedDestination || data.currentDestination || null,
           isInitialStart: data.currentStep === 0
@@ -207,6 +211,7 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
         if (onTriggerToast) onTriggerToast(' 🏆 ALL RIDDLES SOLVED! SPRINT TO THE FOUNTAIN! ');
       } else {
         setNextDest(data.nextDestination);
+        setNextRiddle(data.nextRiddle);
         setUiState('transit');
         if (onTriggerToast) onTriggerToast(' CORRECT! SPRINT TO NEXT DESTINATION! ');
       }
@@ -304,22 +309,18 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
         {/* Roadmap tracker for solving, transit, complete */}
         {['solving', 'transit', 'complete'].includes(uiState) && (
           <div className="r2-roadmap">
-            <div className="r2-roadmap-top">
-              <span className="r2-roadmap-status">
+            <div className="r2-tracker-card">
+              <div className="r2-tracker-header">
                 <span className="star-dot">✦</span>
-                {uiState === 'complete' 
-                  ? `ALL ${stepInfo.totalSteps - 1} CHECKPOINTS CLEARED!` 
-                  : stepInfo.currentStep === 0
-                  ? `STARTING TRIAL • ${stepInfo.totalSteps - 1} CHECKPOINTS TO GO`
-                  : `CHECKPOINT ${stepInfo.currentStep} OF ${stepInfo.totalSteps - 1} CLEARED`}
-              </span>
-              <span className="r2-roadmap-remaining">
-                {uiState === 'complete'
-                  ? '✦ CHAMPION ✦'
-                  : stepInfo.remainingSteps === 1
-                  ? '✦ FINAL SPRINT NEXT ✦'
-                  : `${stepInfo.remainingSteps} to Final`}
-              </span>
+                <span>
+                  {uiState === 'complete' 
+                    ? 'ALL CHECKPOINTS CLEARED' 
+                    : stepInfo.displayStep === 0 
+                      ? 'STARTING TRIAL • 6 CHECKPOINTS TO GO'
+                      : `CHECKPOINT ${stepInfo.displayStep} OF ${stepInfo.totalSteps} CLEARED`}
+                </span>
+                <span className="r2-tracker-meta">{stepInfo.totalSteps - (stepInfo.displayStep || 0)} to Final</span>
+              </div>
             </div>
 
             <div className="r2-nodes-row">
@@ -332,8 +333,8 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
 
               {nodes.map((idx) => {
                 const isFinal = idx === totalNodes - 1;
-                const isDone = uiState === 'complete' || idx < stepInfo.currentStep;
-                const isActive = uiState !== 'complete' && idx === stepInfo.currentStep;
+                const isDone = uiState === 'complete' || idx < stepInfo.displayStep;
+                const isActive = uiState !== 'complete' && idx === stepInfo.displayStep;
 
                 let nodeClass = 'r2-node-circle';
                 if (isDone) nodeClass += ' done';
@@ -427,31 +428,35 @@ export default function Round2PlayView({ participant, onBackToHall, onTriggerToa
           </div>
         )}
 
-        {/* TRANSIT STATE: SPRINT RADAR */}
+        {/* TRANSIT STATE: SPRINT RADAR WITH RIDDLE */}
         {uiState === 'transit' && (
           <div className="r2-transit-card">
             <div className="r2-transit-badge">
-              <span>✓</span> {stepInfo.currentStep === 0 ? 'FIRST DESTINATION UNLOCKED!' : `CHECKPOINT ${stepInfo.currentStep} OF ${stepInfo.totalSteps} CLEARED!`}
+              <span>✓</span> {stepInfo.displayStep === 0 ? 'TRIAL UNLOCKED!' : `CHECKPOINT ${stepInfo.displayStep} OF ${stepInfo.totalSteps} CLEARED!`}
             </div>
 
-            <div className="r2-dest-spotlight">
-              <div className="r2-dest-compass-ring">
-                <span className="r2-compass-icon">🧭</span>
-              </div>
-
-              <p className="r2-dest-kicker">
-                {stepInfo.currentStep === 0 ? 'SPRINT TO YOUR FIRST CHECKPOINT' : 'RUN IMMEDIATELY TO YOUR NEXT DESTINATION'}
+            <div className="r2-dest-spotlight" style={{ padding: '2.5rem 2rem' }}>
+              <p className="r2-dest-kicker" style={{ color: '#f0d089', marginBottom: '1.2rem', letterSpacing: '0.1em' }}>
+                {stepInfo.displayStep === 0 ? 'FIND YOUR FIRST CHECKPOINT' : 'GUESS YOUR NEXT DESTINATION'}
               </p>
-              <h2 className="r2-dest-name">{nextDest}</h2>
-              <p className="r2-dest-instruction">
-                Sprint to this campus landmark immediately with your squad!
-              </p>
-            </div>
-
-            <div className="r2-action-guidance">
-              <span className="r2-guidance-icon">📷</span>
-              <p className="r2-guidance-text">
-                When you arrive at <strong>{nextDest}</strong>, search for the hidden tournament QR seal and scan it with your device camera to log your arrival!
+              
+              {/* Destination Riddle Display */}
+              {nextRiddle ? (
+                <div className="r2-riddle-parchment th-card" style={{ marginTop: 0, marginBottom: '2rem' }}>
+                  <span className="corner tl"></span>
+                  <span className="corner tr"></span>
+                  <span className="corner bl"></span>
+                  <span className="corner br"></span>
+                  <p className="r2-riddle-text" style={{ whiteSpace: 'pre-wrap', fontStyle: 'italic', fontSize: '1.2rem', lineHeight: 1.6 }}>
+                    {nextRiddle}
+                  </p>
+                </div>
+              ) : (
+                <h2 className="r2-dest-name">{nextDest}</h2>
+              )}
+              
+              <p className="r2-dest-instruction" style={{ opacity: 0.9 }}>
+                Guess the location, sprint there immediately with your squad, and search for the hidden QR seal to scan!
               </p>
             </div>
           </div>

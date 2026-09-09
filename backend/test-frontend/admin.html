@@ -676,7 +676,14 @@
           const checkpoints = a.round2_paths?.checkpoints || [];
           const destMap = a.destMap || {};
           
-          const pathHtml = checkpoints.map((chk, idx) => {
+          const initialHtml = `
+            <span class="path-node ${a.state === 'COMPLETE' || a.current_step > 0 || (a.current_step === 0 && a.state === 'TRANSIT') ? 'node-done' : 'node-active'}" title="Initial Riddle">
+              ${a.state === 'COMPLETE' || a.current_step > 0 || (a.current_step === 0 && a.state === 'TRANSIT') ? '✓ ' : '🧩 '}START
+            </span>
+            <span class="path-arrow ${(a.current_step > 0 || (a.current_step === 0 && a.state === 'TRANSIT')) ? 'arrow-passed' : ''}">→</span>
+          `;
+
+          const pathHtml = initialHtml + checkpoints.map((chk, idx) => {
             const landmarkName = destMap[chk] || chk;
             let nodeClass = 'node-locked';
             let icon = '';

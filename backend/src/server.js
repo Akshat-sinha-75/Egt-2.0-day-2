@@ -23,6 +23,15 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Node acts as a tru
 
 const supabase = createClient(supabaseUrl || 'http://localhost', supabaseKey || 'dummy');
 
+const DESTINATION_RIDDLES = {
+  'D1': "No reins to hold me, no roads to roam, \nYet proudly I stand as if heading home.\nMy front legs rise, my spirit flies,\nBeneath the watch of the evening skies.\nWhere the university opens its door,\nFind the steed forever ready to soar.\nWith hooves raised high toward the sky.\nFind me there, and your next clue lies nearby.",
+  'D2': "When lectures fade and the day runs long,\nFollow the aroma drifting along.\nWhere adrak and elaichi blend just right,\nYour next clue waits somewhere in sight.",
+  'D3': "Where footsteps echo but the sky disappears,\nA hidden passage lies beneath the cheers.\nThere’s a second home where tired boys stay,\nTake the path that runs below to find your way.",
+  'D4': "A tower of layers, crowned with a bite,\nWrapped in a bun, yet hidden from sight.\nWhere a Singh stands proud without a crown,\nFind the place where hunger goes down.",
+  'D5': "A dream was born far from the stars,\nYet reached beyond the world of ours.\nShe left her mark where few could go,\nChasing a place no feet could know.\nFind where her journey still inspires,\nAnd follow the path that reaches higher.",
+  'D6': "A golden maze of squares awaits,\nWhere sweetness hides behind tiny gates.\nBorn where chocolates and castles reign,\nFind this crispy treasure from across the plain."
+};
+
 // Middleware: Participant Auth (via Supabase JWT)
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -413,11 +422,22 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
     if (arrivedDest) arrivedDestName = arrivedDest.name;
   }
 
+  const { data: progress } = await supabase
+    .from('round2_progress')
+    .select('id')
+    .eq('team_id', teamId)
+    .eq('step_no', currentStep + 1)
+    .limit(1);
+  const hasScannedCurrentDest = progress && progress.length > 0;
+  const displayStep = hasScannedCurrentDest ? currentStep + 1 : currentStep;
+
   if (assignment.state === 'TRANSIT') {
     return res.json({
       state: 'TRANSIT',
       nextDestination: targetDest ? targetDest.name : 'Next Checkpoint',
+      nextRiddle: DESTINATION_RIDDLES[targetDestId] || null,
       currentStep: currentStep,
+      displayStep: displayStep,
       totalSteps: totalSteps,
       stepNumber: currentStep,
       remainingSteps: totalSteps - currentStep,
@@ -429,10 +449,14 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
   // State is PENDING_SOLVE (only active after QR is physically scanned at this checkpoint)
   let qId = assignment.current_question_id;
   if (!qId) {
-    const { data: questions } = await supabase
-      .from('round2_questions')
-      .select('id, question_text, difficulty')
-      .eq('destination_id', targetDestId);
+    const poolDestId = displayStep < checkpoints.length ? checkpoints[displayStep] : null;
+    let query = supabase.from('round2_questions').select('id, question_text, difficulty');
+    if (poolDestId) {
+      query = query.eq('destination_id', poolDestId);
+    } else {
+      query = query.is('destination_id', null);
+    }
+    const { data: questions } = await query;
 
     if (questions && questions.length > 0) {
       let selectedQuestion;
@@ -460,6 +484,7 @@ app.get('/api/round2/current', authenticate, async (req, res) => {
     state: 'PENDING_SOLVE',
     question: qData ? qData.question_text : 'No question available.',
     currentStep: currentStep,
+    displayStep: displayStep,
     totalSteps: totalSteps,
     stepNumber: currentStep,
     remainingSteps: totalSteps - currentStep,
@@ -511,7 +536,24 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
   const currentDestId = checkpoints[currentStep];
   const { data: currentDest } = await supabase.from('round2_destinations').select('*').eq('id', currentDestId).single();
 
-  const nextStep = currentStep + 1;
+  // Check if they actually scanned the QR for this step
+  const { data: progress } = await supabase
+    .from('round2_progress')
+    .select('id')
+    .eq('team_id', teamId)
+    .eq('step_no', currentStep + 1)
+    .limit(1);
+
+  const hasScannedCurrentDest = progress && progress.length > 0;
+
+  let nextStep;
+  if (!hasScannedCurrentDest) {
+    // This happens for the very first "Initial Riddle" given at the Great Hall before scanning anything.
+    nextStep = currentStep;
+  } else {
+    nextStep = currentStep + 1;
+  }
+
   const isFinalCheckpoint = nextStep >= totalSteps;
 
   if (isFinalCheckpoint) {
@@ -547,12 +589,14 @@ app.post('/api/round2/submit', authenticate, async (req, res) => {
     success: true,
     state: 'TRANSIT',
     nextDestination: nextDest ? nextDest.name : 'Next Checkpoint',
+    nextRiddle: DESTINATION_RIDDLES[nextDestId] || null,
     currentStep: nextStep,
+    displayStep: nextStep,
     totalSteps: totalSteps,
     stepNumber: nextStep,
     remainingSteps: totalSteps - nextStep,
-    arrivedDestination: currentDest ? currentDest.name : null,
-    isInitialStart: false
+    arrivedDestination: hasScannedCurrentDest ? (currentDest ? currentDest.name : null) : null,
+    isInitialStart: nextStep === 0
   });
 });
 
@@ -592,20 +636,23 @@ app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
   const expectedDestId = checkpoints[assignment.current_step];
 
   if (dest.id !== expectedDestId) {
-    const { data: expectedDest } = await supabase.from('round2_destinations').select('name').eq('id', expectedDestId).single();
-    const expectedName = expectedDest ? expectedDest.name : `Checkpoint ${assignment.current_step + 1}`;
-    return res.status(400).json({ 
-      error: `WRONG LOCATION! You scanned "${dest.name}", but your squad must sprint to "${expectedName}". No riddle unlocked.` 
+    return res.status(400).json({
+      error: `WRONG LOCATION! You scanned "${dest.name}", which is incorrect. You must solve the destination riddle and sprint to the correct campus landmark!`
     });
   }
 
-  // Pick or retrieve question for this destination
+  // Pick or retrieve question for this NEXT destination
   let qId = assignment.current_question_id;
   if (!qId) {
-    const { data: questions } = await supabase
-      .from('round2_questions')
-      .select('id, question_text, difficulty')
-      .eq('destination_id', dest.id);
+    const nextDestIndex = assignment.current_step + 1;
+    const poolDestId = nextDestIndex < checkpoints.length ? checkpoints[nextDestIndex] : null;
+    let query = supabase.from('round2_questions').select('id, question_text, difficulty');
+    if (poolDestId) {
+      query = query.eq('destination_id', poolDestId);
+    } else {
+      query = query.is('destination_id', null);
+    }
+    const { data: questions } = await query;
 
     if (questions && questions.length > 0) {
       let selectedQuestion;
@@ -645,6 +692,7 @@ app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
     message: `Arrived at ${dest.name}! Decipher the riddle to proceed.`,
     question: qData ? qData.question_text : 'Decipher the cipher keyword for this station.',
     currentStep: assignment.current_step,
+    displayStep: assignment.current_step + 1,
     totalSteps: checkpoints.length,
     stepNumber: assignment.current_step,
     remainingSteps: checkpoints.length - assignment.current_step,
@@ -658,11 +706,11 @@ app.post('/api/round2/scan_qr', authenticate, async (req, res) => {
 // ------------------------------------------------------------------
 
 app.get(['/api/health', '/health'], (req, res) => {
-  res.json({ 
-    status: 'healthy', 
+  res.json({
+    status: 'healthy',
     service: 'egt-2.0-backend',
-    uptimeSeconds: Math.floor(process.uptime()), 
-    timestamp: new Date().toISOString() 
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString()
   });
 });
 
